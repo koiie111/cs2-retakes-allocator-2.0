@@ -19,6 +19,11 @@ public class AdvancedGunMenu
 {
     private const string SharpModMenuDriverName = "SharpModMenu";
     private readonly Dictionary<ulong, IMenu> _openMenus = new();
+    private int _generation;
+
+    private CCSPlayerController? ResolvePlayer(int slot, int? userId, ulong steamId, int generation) =>
+        generation == _generation && Utilities.GetPlayerFromSlot(slot) is { IsValid: true } player &&
+        player.UserId == userId && Helpers.GetSteamId(player) == steamId ? player : null;
 
     public HookResult OnEventPlayerChat(EventPlayerChat @event, GameEventInfo info)
     {
@@ -46,11 +51,6 @@ public class AdvancedGunMenu
         }
 
         return HookResult.Continue;
-    }
-
-    public void OnTick()
-    {
-        // Menu updates are handled by the SharpModMenu driver.
     }
 
     public HookResult OnEventPlayerDisconnect(EventPlayerDisconnect @event, GameEventInfo info)
@@ -94,6 +94,7 @@ public class AdvancedGunMenu
 
     public void Cleanup()
     {
+        _generation++;
         foreach (var menu in _openMenus.Values.ToArray())
         {
             CloseMenu(menu);
@@ -135,10 +136,19 @@ public class AdvancedGunMenu
             return;
         }
 
-        var data = await BuildMenuDataAsync(team, steamId);
+        var slot = player.Slot;
+        var userId = player.UserId;
+        var generation = _generation;
+        GunMenuData? data;
+        try { data = await BuildMenuDataAsync(team, steamId); }
+        catch (Exception error)
+        {
+            Log.Error($"Could not load allocator preferences: {error.Message}");
+            data = null;
+        }
         Server.NextFrame(() =>
         {
-            if (!Helpers.PlayerIsValid(player) || Helpers.GetSteamId(player) != steamId || player.Team != team)
+            if (ResolvePlayer(slot, userId, steamId, generation) is not { } player || player.Team != team)
                 return;
             if (data is null)
             {
@@ -492,24 +502,41 @@ public class AdvancedGunMenu
         RoundType roundType, CsItem weapon)
     {
         var weaponName = weapon.GetName();
-        _ = Task.Run(async () =>
-        {
-            var result = await OnWeaponCommandHelper.HandleAsync(new[] { weaponName }, steamId, roundType, team, false);
-            if (string.IsNullOrWhiteSpace(result.Item1))
-            {
-                return;
-            }
+        var slot = player.Slot;
+        var userId = player.UserId;
+        var generation = _generation;
+        _ = CompleteAsync();
 
-            Server.NextFrame(() =>
+        async Task CompleteAsync()
+        {
+            try
             {
-                if (!Helpers.PlayerIsValid(player))
+                var result = await OnWeaponCommandHelper.HandleAsync(new[] { weaponName }, steamId, roundType, team, false);
+                if (string.IsNullOrWhiteSpace(result.Item1))
                 {
                     return;
                 }
 
-                Helpers.WriteNewlineDelimited(result.Item1, player.PrintToChat);
-            });
-        });
+                Server.NextFrame(() =>
+                {
+                    if (ResolvePlayer(slot, userId, steamId, generation) is not { } player)
+                    {
+                        return;
+                    }
+
+                    Helpers.WriteNewlineDelimited(result.Item1, player.PrintToChat);
+                });
+            }
+            catch (Exception error)
+            {
+                Log.Error($"Could not save allocator preferences: {error.Message}");
+                Server.NextFrame(() =>
+                {
+                    if (ResolvePlayer(slot, userId, steamId, generation) is { } recipient)
+                        Helpers.WriteNewlineDelimited(Translator.Instance["weapon_preference.not_saved"], recipient.PrintToChat);
+                });
+            }
+        }
     }
 
     private void HandleSniperChoice(CCSPlayerController player, GunMenuData data, string choice, IReadOnlyList<string> options)
@@ -641,34 +668,51 @@ public class AdvancedGunMenu
         var previousPreference = data.PreferredSniper;
         data.PreferredSniper = preference;
 
-        _ = Task.Run(async () =>
+        var slot = player.Slot;
+        var userId = player.UserId;
+        var generation = _generation;
+        _ = CompleteAsync();
+
+        async Task CompleteAsync()
         {
-            await Queries.SetAwpWeaponPreferenceAsync(steamId, preference);
+            try
+            {
+                await Queries.SetAwpWeaponPreferenceAsync(steamId, preference);
 
-            string message;
-            if (preference.HasValue)
-            {
-                message = WeaponHelpers.IsRandomSniperPreference(preference.Value)
-                    ? Translator.Instance["weapon_preference.set_preference_preferred_random"]
-                    : Translator.Instance["weapon_preference.set_preference_preferred", preference.Value.GetName()];
-            }
-            else
-            {
-                message = previousPreference.HasValue && WeaponHelpers.IsRandomSniperPreference(previousPreference.Value)
-                    ? Translator.Instance["weapon_preference.unset_preference_preferred_random"]
-                    : Translator.Instance["weapon_preference.unset_preference_preferred", (previousPreference ?? CsItem.AWP).GetName()];
-            }
-
-            Server.NextFrame(() =>
-            {
-                if (!Helpers.PlayerIsValid(player))
+                string message;
+                if (preference.HasValue)
                 {
-                    return;
+                    message = WeaponHelpers.IsRandomSniperPreference(preference.Value)
+                        ? Translator.Instance["weapon_preference.set_preference_preferred_random"]
+                        : Translator.Instance["weapon_preference.set_preference_preferred", preference.Value.GetName()];
+                }
+                else
+                {
+                    message = previousPreference.HasValue && WeaponHelpers.IsRandomSniperPreference(previousPreference.Value)
+                        ? Translator.Instance["weapon_preference.unset_preference_preferred_random"]
+                        : Translator.Instance["weapon_preference.unset_preference_preferred", (previousPreference ?? CsItem.AWP).GetName()];
                 }
 
-                Helpers.WriteNewlineDelimited(message, player.PrintToChat);
-            });
-        });
+                Server.NextFrame(() =>
+                {
+                    if (ResolvePlayer(slot, userId, steamId, generation) is not { } player)
+                    {
+                        return;
+                    }
+
+                    Helpers.WriteNewlineDelimited(message, player.PrintToChat);
+                });
+            }
+            catch (Exception error)
+            {
+                Log.Error($"Could not save allocator preferences: {error.Message}");
+                Server.NextFrame(() =>
+                {
+                    if (ResolvePlayer(slot, userId, steamId, generation) is { } recipient)
+                        Helpers.WriteNewlineDelimited(Translator.Instance["weapon_preference.not_saved"], recipient.PrintToChat);
+                });
+            }
+        }
     }
 
     private static CsItem? GetDefaultWeapon(CsTeam team, WeaponAllocationType type, IReadOnlyList<CsItem> fallback)

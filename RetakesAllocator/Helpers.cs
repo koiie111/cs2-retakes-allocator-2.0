@@ -166,27 +166,14 @@ public static class Helpers
         return removed;
     }
 
-    private static CCSGameRules? GetGameRules()
-    {
-        try
-        {
-            var gameRulesEntities = Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules");
-            return gameRulesEntities.First().GameRules;
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
     public static bool IsWarmup()
     {
-        return GetGameRules()?.WarmupPeriod ?? false;
+        return Utilities.GetGameRules()?.WarmupPeriod ?? false;
     }
 
     public static bool IsFreezePeriod()
     {
-        return GetGameRules()?.FreezePeriod ?? false;
+        return Utilities.GetGameRules()?.FreezePeriod ?? false;
     }
 
     public static bool IsWeaponAllocationAllowed()

@@ -15,7 +15,7 @@ using WeaponPreferencesType = Dictionary<
     Dictionary<WeaponAllocationType, CsItem>
 >;
 
-public class UserSetting
+public class UserSetting : IWeaponPreferences
 {
     [Key]
     [Required]
@@ -37,9 +37,12 @@ public class UserSetting
             .HaveConversion<WeaponPreferencesConverter, WeaponPreferencesComparer>();
     }
 
-    public bool IsEnemyStuffEnabledForTeam(CsTeam team)
+    public bool IsEnemyStuffEnabledForTeam(CsTeam team) =>
+        IsEnemyStuffEnabledForTeam(EnemyStuffTeamPreference, team);
+
+    internal static bool IsEnemyStuffEnabledForTeam(EnemyStuffTeamPreference preference, CsTeam team)
     {
-        return EnemyStuffTeamPreference switch
+        return preference switch
         {
             EnemyStuffTeamPreference.Terrorist => team == CsTeam.Terrorist,
             EnemyStuffTeamPreference.CounterTerrorist => team == CsTeam.CounterTerrorist,

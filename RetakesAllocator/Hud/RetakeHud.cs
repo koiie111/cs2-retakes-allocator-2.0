@@ -58,6 +58,8 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
         Optional(PlayerSettings)?.SetPlayerSettingsValue(player, WelcomeSetting, skip ? "1" : "0");
 #endif
     }
+    private static readonly PluginCapability<Func<(int Playing, int Waiting, IReadOnlyDictionary<int, int> Positions)>> QueueSnapshot
+        = new("retakes_plugin:hud_queue_snapshot");
     private static readonly PluginCapability<Func<CCSPlayerController, (int Position, int Playing, int Waiting)>> Queue
         = new("retakes_plugin:hud_queue");
     private static readonly PluginCapability<Func<CCSPlayerController, string, bool>> CommandAllowed
@@ -104,7 +106,6 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
         internal CsTeam Team { get; set; }
         internal UserSetting? Preferences { get; set; }
         internal ulong PreferenceId { get; set; }
-        internal Task PreferenceWork { get; set; } = Task.CompletedTask;
         internal Timer? CloseTimer { get; set; }
         internal Timer? MenuTimer { get; set; }
         internal bool RoundToast { get; set; }
@@ -175,8 +176,7 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
     }
 
     private static bool SafeForWelcome(CCSPlayerController player) =>
-        !player.PawnIsAlive || Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules")
-            .FirstOrDefault()?.GameRules is { } rules && (rules.WarmupPeriod || rules.FreezePeriod);
+        !player.PawnIsAlive || Utilities.GetGameRules() is { } rules && (rules.WarmupPeriod || rules.FreezePeriod);
 
     internal bool OpenGuns(CCSPlayerController player)
     {
@@ -499,13 +499,13 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
 
     private void Run<T>(PlayerState state, int revision, Func<Task<T>> task, Action<T> complete)
     {
-        // Closing and reopening the menu can start a read while a save is still queued.
-        var previous = state.PreferenceWork;
-        state.PreferenceWork = Task.Run(async () =>
+        // Submit in click order. Queries serializes the actual database operations.
+        _ = CompleteAsync();
+
+        async Task CompleteAsync()
         {
             try
             {
-                await previous;
                 var result = await task();
                 Server.NextFrame(() =>
                 {
@@ -524,7 +524,7 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
                     Status(state, "Не удалось сохранить или загрузить настройки");
                 });
             }
-        });
+        }
     }
 
     private static string PreferenceName(CsItem? weapon) => weapon switch
@@ -955,7 +955,12 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
         Server.NextFrame(() =>
         {
             _queueRefreshPending = false;
-            if (!Enabled || Optional(Queue) is not { } queue)
+            if (!Enabled)
+                return;
+
+            var positions = Optional(QueueSnapshot)?.Invoke().Positions;
+            var queue = positions is null ? Optional(Queue) : null;
+            if (positions is null && queue is null)
                 return;
 
             foreach (var player in Utilities.GetPlayers())
@@ -963,7 +968,7 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
                 if (!Human(player))
                     continue;
 
-                if (player.Team == CsTeam.Spectator && queue(player).Position is > 0 and var position)
+                if (player.Team == CsTeam.Spectator && (positions is not null ? positions.GetValueOrDefault(player.Slot) : queue!(player).Position) is > 0 and var position)
                 {
                     var state = State(player);
                     if (!state.RoundToast)

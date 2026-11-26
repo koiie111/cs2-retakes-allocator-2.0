@@ -1,6 +1,6 @@
+using System.Collections.Concurrent;
 using System.Data;
 using System.Reflection;
-using System.Threading;
 using CounterStrikeSharp.API.Modules.Entities.Constants;
 using CounterStrikeSharp.API.Modules.Utils;
 using Microsoft.EntityFrameworkCore;
@@ -13,50 +13,194 @@ namespace RetakesAllocatorCore.Db;
 
 public class Queries
 {
-    private static readonly SemaphoreSlim UpsertSemaphore = new(1, 1);
+    private sealed record CachedSettings(PreferenceSnapshot? Value);
 
-    public static async Task<UserSetting?> GetUserSettings(ulong userId)
+    private static readonly object WorkLock = new();
+    private static readonly ConcurrentDictionary<ulong, CachedSettings> Cache = new();
+    private static readonly HashSet<ulong> Refreshing = [];
+    private static Task _tail = Task.CompletedTask;
+    private static Exception? _migrationError;
+    private static (DatabaseProvider Provider, string ConnectionString)? _database;
+    private static int _databaseGeneration;
+
+    public static bool ConfigureRuntimeDatabase()
     {
-        await using var db = new Db();
-        return await db.UserSettings.AsNoTracking().FirstOrDefaultAsync(u => u.UserId == userId);
+        var config = Configs.GetConfigData();
+        var database = (config.DatabaseProvider, config.DatabaseConnectionString);
+        lock (WorkLock)
+        {
+            if (_database == database)
+                return false;
+            _database = database;
+            _databaseGeneration++;
+            Cache.Clear();
+            Refreshing.Clear();
+            return true;
+        }
     }
 
-    private static async Task<UserSetting?> UpsertUserSettings(ulong userId, Action<UserSetting> mutation)
+    private static void Publish(int generation, ulong id, UserSetting? setting)
     {
-        if (userId == 0)
-        {
-            Log.Debug("Encountered userid 0, not upserting user settings");
-            return null;
-        }
+        var snapshot = new CachedSettings(Snapshot(setting));
+        lock (WorkLock)
+            if (generation == _databaseGeneration)
+                Cache[id] = snapshot;
+    }
 
-        await UpsertSemaphore.WaitAsync();
+    // Enqueue on the caller's thread to preserve the order of UI actions.
+    private static Task<T> Enqueue<T>(Func<int, ConfigData, Task<T>> work)
+    {
+        lock (WorkLock)
+        {
+            var previous = _tail;
+            var config = Configs.GetConfigData();
+            var generation = _databaseGeneration;
+            var operation = Task.Run(async () =>
+            {
+                try { await previous.ConfigureAwait(false); }
+                catch { /* Each caller receives its own failure. */ }
+                return await work(generation, config).ConfigureAwait(false);
+            });
+            _tail = operation;
+            return operation;
+        }
+    }
+
+    private static int _migrationGeneration;
+
+    public static Task StartMigration() => Enqueue((generation, config) =>
+    {
+        _migrationGeneration = generation;
         try
         {
-            Log.Debug($"Upserting settings for {userId}");
-
-            await using var instance = new Db();
-            var isNew = false;
-            var userSettings = await instance.UserSettings.AsNoTracking().FirstOrDefaultAsync(u => u.UserId == userId);
-            if (userSettings is null)
-            {
-                userSettings = new UserSetting {UserId = userId};
-                await instance.UserSettings.AddAsync(userSettings);
-                isNew = true;
-            }
-
-            instance.Entry(userSettings).State = isNew ? EntityState.Added : EntityState.Modified;
-
-            mutation(userSettings);
-
-            await instance.SaveChangesAsync();
-            instance.Entry(userSettings).State = EntityState.Detached;
-
-            return userSettings;
+            Migrate(config);
+            _migrationError = null;
         }
-        finally
+        catch (Exception error)
         {
-            UpsertSemaphore.Release();
+            _migrationError = error;
+            throw;
         }
+        return Task.FromResult(true);
+    });
+
+    private static void CheckReady(int generation)
+    {
+        if (_migrationGeneration == generation && _migrationError is { } error)
+            throw new InvalidOperationException("Allocator database migration failed.", error);
+    }
+
+    public static PreferenceSnapshot? ReadSnapshot(ulong userId) =>
+        Cache.TryGetValue(userId, out var cached) ? cached.Value : null;
+
+    public static bool HasSnapshot(ulong userId) => Cache.ContainsKey(userId);
+
+    public static bool IsZeusEnabled(ulong userId) =>
+        Cache.TryGetValue(userId, out var cached) && cached.Value?.ZeusEnabled == true;
+
+    private static PreferenceSnapshot? Snapshot(UserSetting? settings) =>
+        settings is null ? null : new PreferenceSnapshot(settings);
+
+    public static void Prefetch(IEnumerable<ulong> userIds)
+    {
+        var requested = userIds.Where(id => id != 0).ToArray();
+        lock (WorkLock)
+        {
+            var ids = requested.Where(Refreshing.Add).ToArray();
+            if (ids.Length == 0)
+                return;
+
+            _ = Enqueue(async (generation, config) =>
+            {
+                try
+                {
+                    CheckReady(generation);
+                    await using var db = new Db(config);
+                    var rows = await db.UserSettings.Where(row => ids.Contains(row.UserId))
+                        .ToDictionaryAsync(row => row.UserId);
+                    foreach (var id in ids)
+                        Publish(generation, id, rows.GetValueOrDefault(id));
+                }
+                catch (Exception error)
+                {
+                    Log.Error($"Could not refresh allocator preferences: {error.Message}");
+                }
+                finally
+                {
+                    lock (WorkLock)
+                        if (generation == _databaseGeneration)
+                            foreach (var id in ids)
+                                Refreshing.Remove(id);
+                }
+                return true;
+            });
+        }
+    }
+
+    public static Task<UserSetting?> GetUserSettings(ulong userId) => Enqueue(async (generation, config) =>
+    {
+        if (userId == 0)
+            return null;
+        CheckReady(generation);
+        await using var db = new Db(config);
+        var setting = await db.UserSettings.AsNoTracking().FirstOrDefaultAsync(u => u.UserId == userId);
+        Publish(generation, userId, setting);
+        return setting;
+    });
+
+    private static Task<UserSetting?> UpsertUserSettings(ulong userId, Action<UserSetting> mutation) => Enqueue(async (generation, config) =>
+    {
+        if (userId == 0)
+            return null;
+
+        CheckReady(generation);
+        await using var db = new Db(config);
+        var settings = await db.UserSettings.AsTracking().FirstOrDefaultAsync(u => u.UserId == userId);
+        if (settings is null)
+        {
+            settings = new UserSetting { UserId = userId };
+            db.UserSettings.Add(settings);
+        }
+        else
+        {
+            // The JSON converter does not take deep EF snapshots of nested dictionaries.
+            db.Entry(settings).State = EntityState.Modified;
+        }
+
+        settings.WeaponPreferences ??= new();
+        mutation(settings);
+        await db.SaveChangesAsync();
+        Publish(generation, userId, settings);
+        return settings;
+    });
+
+    public static async Task<bool> ToggleZeusAsync(ulong userId) =>
+        (await UpsertUserSettings(userId, settings => settings.ZeusEnabled = !settings.ZeusEnabled))?.ZeusEnabled == true;
+
+    public static async Task<bool> ToggleAwpWeaponPreferenceAsync(ulong userId, CsTeam team, CsItem item, bool removeAny)
+    {
+        var removed = false;
+        await UpsertUserSettings(userId, settings =>
+        {
+            var current = settings.GetWeaponPreference(team, WeaponAllocationType.Preferred);
+            removed = removeAny ? current.HasValue : current == item;
+            SetPreferred(settings, removed ? null : item);
+        });
+        return removed;
+    }
+
+    private static void SetPreferred(UserSetting settings, CsItem? item)
+    {
+        settings.SetWeaponPreference(CsTeam.Terrorist, WeaponAllocationType.Preferred,
+            WeaponHelpers.CoercePreferredTeam(item, CsTeam.Terrorist));
+        settings.SetWeaponPreference(CsTeam.CounterTerrorist, WeaponAllocationType.Preferred,
+            WeaponHelpers.CoercePreferredTeam(item, CsTeam.CounterTerrorist));
+    }
+
+    public static async Task ReportFailure(Task operation)
+    {
+        try { await operation; }
+        catch (Exception error) { Log.Error($"Could not save allocator preferences: {error.Message}"); }
     }
 
     public static async Task SetWeaponPreferenceForUserAsync(ulong userId, CsTeam team,
@@ -70,7 +214,7 @@ public class Queries
     public static void SetWeaponPreferenceForUser(ulong userId, CsTeam team, WeaponAllocationType weaponAllocationType,
         CsItem? item)
     {
-        Task.Run(async () => { await SetWeaponPreferenceForUserAsync(userId, team, weaponAllocationType, item); });
+        _ = ReportFailure(SetWeaponPreferenceForUserAsync(userId, team, weaponAllocationType, item));
     }
 
     public static async Task ClearWeaponPreferencesForUserAsync(ulong userId)
@@ -80,23 +224,17 @@ public class Queries
 
     public static void ClearWeaponPreferencesForUser(ulong userId)
     {
-        Task.Run(async () => { await ClearWeaponPreferencesForUserAsync(userId); });
+        _ = ReportFailure(ClearWeaponPreferencesForUserAsync(userId));
     }
 
     public static async Task SetAwpWeaponPreferenceAsync(ulong userId, CsItem? item)
     {
-        await UpsertUserSettings(userId, userSetting =>
-        {
-            userSetting.SetWeaponPreference(CsTeam.Terrorist, WeaponAllocationType.Preferred,
-                WeaponHelpers.CoercePreferredTeam(item, CsTeam.Terrorist));
-            userSetting.SetWeaponPreference(CsTeam.CounterTerrorist, WeaponAllocationType.Preferred,
-                WeaponHelpers.CoercePreferredTeam(item, CsTeam.CounterTerrorist));
-        });
+        await UpsertUserSettings(userId, settings => SetPreferred(settings, item));
     }
 
     public static void SetAwpWeaponPreference(ulong userId, CsItem? item)
     {
-        Task.Run(async () => { await SetAwpWeaponPreferenceAsync(userId, item); });
+        _ = ReportFailure(SetAwpWeaponPreferenceAsync(userId, item));
     }
 
     public static async Task SetZeusPreferenceAsync(ulong userId, bool enabled)
@@ -106,7 +244,7 @@ public class Queries
 
     public static void SetZeusPreference(ulong userId, bool enabled)
     {
-        Task.Run(async () => { await SetZeusPreferenceAsync(userId, enabled); });
+        _ = ReportFailure(SetZeusPreferenceAsync(userId, enabled));
     }
 
     public static async Task SetEnemyStuffPreferenceAsync(ulong userId, EnemyStuffTeamPreference preference)
@@ -116,7 +254,7 @@ public class Queries
 
     public static void SetEnemyStuffPreference(ulong userId, EnemyStuffTeamPreference preference)
     {
-        Task.Run(async () => { await SetEnemyStuffPreferenceAsync(userId, preference); });
+        _ = ReportFailure(SetEnemyStuffPreferenceAsync(userId, preference));
     }
     public static IDictionary<ulong, UserSetting> GetUsersSettings(ICollection<ulong> userIds)
     {
@@ -142,10 +280,11 @@ public class Queries
         ?? typeof(DbContext).Assembly.GetName().Version?.ToString()
         ?? "7.0.0";
 
-    public static void Migrate()
+    public static void Migrate() => Migrate(Configs.GetConfigData());
+
+    private static void Migrate(ConfigData config)
     {
-        using var db = new Db();
-        var config = Configs.GetConfigData();
+        using var db = new Db(config);
 
         var isMySql = config.DatabaseProvider == DatabaseProvider.MySql;
 
@@ -172,6 +311,7 @@ public class Queries
     {
         using var db = new Db();
         db.UserSettings.ExecuteDelete();
+        Cache.Clear();
     }
 
     public static void Disconnect()

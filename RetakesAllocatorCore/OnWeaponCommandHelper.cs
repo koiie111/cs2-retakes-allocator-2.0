@@ -17,7 +17,7 @@ public class OnWeaponCommandHelper
 
     public static async Task<Tuple<string, CsItem?>> HandleAsync(ICollection<string> args, ulong userId,
         RoundType? roundType, CsTeam currentTeam,
-        bool remove)
+        bool remove, bool togglePreferred = false, bool removeAnyPreferred = false)
     {
         CsItem? outWeapon = null;
 
@@ -108,6 +108,13 @@ public class OnWeaponCommandHelper
             return Ret(Translator.Instance["weapon_preference.not_valid_for_team", weapon, team]);
         }
 
+
+        if (isPreferred && togglePreferred)
+        {
+            var removed = await Queries.ToggleAwpWeaponPreferenceAsync(userId, team, weapon, removeAnyPreferred);
+            return Ret(Translator.Instance[removed ? "weapon_preference.unset_preference_preferred" :
+                "weapon_preference.set_preference_preferred", weapon.GetName()]);
+        }
 
         if (remove)
         {

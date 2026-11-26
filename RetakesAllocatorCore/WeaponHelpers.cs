@@ -777,7 +777,7 @@ public static class WeaponHelpers
     public static WeaponSelectionResult GetWeaponsForRoundType(
         RoundType roundType,
         CsTeam team,
-        UserSetting? userSetting,
+        IWeaponPreferences? userSetting,
         bool givePreferred,
         bool enemyStuffQuotaAvailable = true,
         CsItem? preferredOverride = null
@@ -919,7 +919,7 @@ public static class WeaponHelpers
     private static CsItem? GetWeaponForAllocationType(
         WeaponAllocationType allocationType,
         CsTeam team,
-        UserSetting? userSetting,
+        IWeaponPreferences? userSetting,
         bool allowEnemySwap,
         bool enemyStuffQuotaAvailable,
         ref bool enemyStuffGranted
@@ -996,7 +996,7 @@ public static class WeaponHelpers
     private static CsItem? MaybeSwapForEnemyStuff(
         WeaponAllocationType allocationType,
         CsTeam team,
-        UserSetting? userSetting,
+        IWeaponPreferences? userSetting,
         CsItem weapon,
         bool enemyStuffQuotaAvailable,
         ref bool enemyStuffGranted
