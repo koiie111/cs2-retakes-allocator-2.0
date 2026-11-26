@@ -96,6 +96,7 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
         internal int Offset { get; set; }
         internal CsTeam Team { get; set; }
         internal UserSetting? Preferences { get; set; }
+        internal ulong PreferenceId { get; set; }
         internal Timer? CloseTimer { get; set; }
         internal Timer? MenuTimer { get; set; }
         internal bool RoundToast { get; set; }
@@ -177,6 +178,12 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
         if (!Configs.GetConfigData().CanPlayersSelectWeapons() || !Configs.GetConfigData().GunCommandsEnabled)
         {
             player.PrintToChat(" \x04[RETAKE]\x01 Выбор оружия выключен.");
+            return true;
+        }
+
+        if (Helpers.GetSteamId(player) == 0)
+        {
+            player.PrintToChat(" \x04[RETAKE]\x01 Steam ещё подключается. Попробуй !guns чуть позже.");
             return true;
         }
 
@@ -310,7 +317,8 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
     {
         Show(state, new Page("Снаряжение", [], () => ShowHelp(state), "Загружаем настройки…", state.Team));
         var revision = state.Revision;
-        var steamId = state.SteamId;
+        var steamId = Helpers.GetSteamId(state.Player);
+        state.PreferenceId = steamId;
         Run(state, revision, () => Queries.GetUserSettings(steamId), preferences =>
         {
             state.Preferences = preferences;
@@ -372,7 +380,7 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
         if (!config.GunCommandsEnabled || !config.CanPlayersSelectWeapons() || !allowed)
             return;
 
-        Save(state, () => Queries.SetWeaponPreferenceForUserAsync(state.SteamId, team, slot, weapon), () =>
+        Save(state, () => Queries.SetWeaponPreferenceForUserAsync(state.PreferenceId, team, slot, weapon), () =>
         {
             state.Preferences!.SetWeaponPreference(team, slot, weapon);
             ShowChoices(state, slot, title);
@@ -414,7 +422,7 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
         if (weapon is { } value && !CanUseSniper(state.Player, value))
             return;
 
-        Save(state, () => Queries.SetAwpWeaponPreferenceAsync(state.SteamId, weapon), () =>
+        Save(state, () => Queries.SetAwpWeaponPreferenceAsync(state.PreferenceId, weapon), () =>
         {
             state.Preferences!.SetWeaponPreference(CsTeam.Terrorist, WeaponAllocationType.Preferred, weapon);
             state.Preferences.SetWeaponPreference(CsTeam.CounterTerrorist, WeaponAllocationType.Preferred, weapon);
@@ -442,7 +450,7 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
         if (!Helpers.HasEnemyStuffPermission(state.Player))
             return;
 
-        Save(state, () => Queries.SetEnemyStuffPreferenceAsync(state.SteamId, preference), () =>
+        Save(state, () => Queries.SetEnemyStuffPreferenceAsync(state.PreferenceId, preference), () =>
         {
             state.Preferences!.EnemyStuffTeamPreference = preference;
             ShowEnemy(state);
@@ -455,7 +463,7 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
             return;
 
         var enabled = state.Preferences?.ZeusEnabled != true;
-        Save(state, () => Queries.SetZeusPreferenceAsync(state.SteamId, enabled), () =>
+        Save(state, () => Queries.SetZeusPreferenceAsync(state.PreferenceId, enabled), () =>
         {
             state.Preferences!.ZeusEnabled = enabled;
             ShowExtra(state);
@@ -464,7 +472,7 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
 
     private void Save(PlayerState state, Func<Task> write, Action saved)
     {
-        if (state.Busy)
+        if (state.Busy || state.PreferenceId == 0 || state.PreferenceId != Helpers.GetSteamId(state.Player))
             return;
 
         state.Busy = true;
@@ -473,7 +481,7 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
         {
             var keepOffset = state.Offset;
             state.Busy = false;
-            state.Preferences ??= new UserSetting { UserId = state.SteamId };
+            state.Preferences ??= new UserSetting { UserId = state.PreferenceId };
             saved();
             state.Offset = keepOffset;
             Render(state);
