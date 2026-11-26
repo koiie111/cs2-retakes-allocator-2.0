@@ -102,7 +102,7 @@ public class AdvancedGunMenu
         _openMenus.Clear();
     }
 
-    private async Task OpenMenuForPlayerAsync(CCSPlayerController player)
+    internal async Task OpenMenuForPlayerAsync(CCSPlayerController player)
     {
         if (!Helpers.PlayerIsValid(player))
         {

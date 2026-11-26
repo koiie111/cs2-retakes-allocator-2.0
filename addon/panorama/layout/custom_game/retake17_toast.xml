@@ -1,0 +1,10 @@
+<root>
+<styles><include src="s2r://panorama/styles/custom_game/retake17.vcss_c" /></styles>
+<Panel class="Outer" hittest="false">
+  <Panel id="toast" class="Toast" hittest="false">
+    <Label id="badge" class="Badge" text="{s:text}" hittest="false" />
+    <Panel id="toast_team" class="TeamLogo" hittest="false" />
+    <Label id="message" class="ToastMessage" text="{s:text}" hittest="false" />
+  </Panel>
+</Panel>
+</root>

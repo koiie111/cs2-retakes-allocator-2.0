@@ -36,6 +36,11 @@ public class VoteMenu : AbstractBaseMenu
         CreateMenuTimeoutTimer(player);
     }
     
+    public void CastPanoramaVote(CCSPlayerController player, RoundType roundType)
+    {
+        _voteManager.CastVote(player, roundType.ToString());
+    }
+
     public void GatherAndHandleVotes()
     {
         _voteManager.CompleteVote();

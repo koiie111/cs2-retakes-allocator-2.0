@@ -17,7 +17,8 @@ public class Queries
 
     public static async Task<UserSetting?> GetUserSettings(ulong userId)
     {
-        return await Db.GetInstance().UserSettings.AsNoTracking().FirstOrDefaultAsync(u => u.UserId == userId);
+        await using var db = new Db();
+        return await db.UserSettings.AsNoTracking().FirstOrDefaultAsync(u => u.UserId == userId);
     }
 
     private static async Task<UserSetting?> UpsertUserSettings(ulong userId, Action<UserSetting> mutation)
@@ -33,7 +34,7 @@ public class Queries
         {
             Log.Debug($"Upserting settings for {userId}");
 
-            var instance = Db.GetInstance();
+            await using var instance = new Db();
             var isNew = false;
             var userSettings = await instance.UserSettings.AsNoTracking().FirstOrDefaultAsync(u => u.UserId == userId);
             if (userSettings is null)
@@ -119,8 +120,8 @@ public class Queries
     }
     public static IDictionary<ulong, UserSetting> GetUsersSettings(ICollection<ulong> userIds)
     {
-        var userSettingsList = Db.GetInstance()
-            .UserSettings
+        using var db = new Db();
+        var userSettingsList = db.UserSettings
             .AsNoTracking()
             .Where(u => userIds.Contains(u.UserId))
             .ToList();
@@ -143,7 +144,7 @@ public class Queries
 
     public static void Migrate()
     {
-        var db = Db.GetInstance();
+        using var db = new Db();
         var config = Configs.GetConfigData();
 
         var isMySql = config.DatabaseProvider == DatabaseProvider.MySql;
@@ -169,7 +170,8 @@ public class Queries
 
     public static void Wipe()
     {
-        Db.GetInstance().UserSettings.ExecuteDelete();
+        using var db = new Db();
+        db.UserSettings.ExecuteDelete();
     }
 
     public static void Disconnect()

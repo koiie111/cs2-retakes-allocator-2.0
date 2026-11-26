@@ -16,6 +16,40 @@ public class WeaponSelectionTests : BaseTestFixture
     }
 
     [Test]
+    public async Task ExplicitDefaultWinsOverRandomFallback()
+    {
+        const CsTeam team = CsTeam.CounterTerrorist;
+        const WeaponAllocationType slot = WeaponAllocationType.PistolRound;
+        var config = Configs.GetConfigData();
+        Assert.That(config.CanAssignDefaultWeapons() && config.CanAssignRandomWeapons(), Is.True);
+        var defaultPistol = config.DefaultWeapons[team][slot];
+
+        await Queries.SetWeaponPreferenceForUserAsync(TestSteamId, team, slot, WeaponHelpers.DefaultLoadoutPreference);
+        var settings = await Queries.GetUserSettings(TestSteamId);
+        Assert.That(settings?.GetWeaponPreference(team, slot), Is.EqualTo(WeaponHelpers.DefaultLoadoutPreference));
+        for (var i = 0; i < 24; i++)
+        {
+            var selection = WeaponHelpers.GetWeaponsForRoundType(RoundType.Pistol, team, settings, givePreferred: false);
+            Assert.That(selection.Weapons, Is.EqualTo(new[] { defaultPistol }));
+        }
+    }
+
+    [Test]
+    public async Task ExplicitRandomResolvesToAnAllowedWeapon()
+    {
+        const CsTeam team = CsTeam.Terrorist;
+        const WeaponAllocationType slot = WeaponAllocationType.PistolRound;
+        await Queries.SetWeaponPreferenceForUserAsync(TestSteamId, team, slot, WeaponHelpers.RandomLoadoutPreference);
+        var settings = await Queries.GetUserSettings(TestSteamId);
+        Assert.That(settings?.GetWeaponPreference(team, slot), Is.EqualTo(WeaponHelpers.RandomLoadoutPreference));
+
+        var available = WeaponHelpers.GetPossibleWeaponsForAllocationType(slot, team);
+        var selection = WeaponHelpers.GetWeaponsForRoundType(RoundType.Pistol, team, settings, givePreferred: false);
+        Assert.That(selection.Weapons, Has.Count.EqualTo(1));
+        Assert.That(available, Does.Contain(selection.Weapons.Single()));
+    }
+
+    [Test]
     public async Task SetWeaponPreferenceDirectly()
     {
         Assert.That(

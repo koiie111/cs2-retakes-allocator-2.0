@@ -1,7 +1,7 @@
-﻿#!/usr/bin/env bash
+#!/usr/bin/env bash
 
 TARGET_NAME="RetakesAllocator"
-TARGET_DIR="./bin/Release/net8.0"
+TARGET_DIR="./bin/Release/net10.0"
 NEW_DIR="./bin/Release/RetakesAllocator"
 SHARPMODMENU_ROOT="${SHARPMODMENU_ROOT:-/c/Users/micka/Documents/GitHub/SharpModMenu}"
 SHARPMODMENU_COMPILED="$SHARPMODMENU_ROOT/compiled/counterstrikesharp"

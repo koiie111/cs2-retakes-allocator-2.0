@@ -14,6 +14,7 @@ using CounterStrikeSharp.API.Modules.Utils;
 using CounterStrikeSharp.API.Modules.Events;
 using RetakesAllocatorCore.Managers;
 using RetakesAllocator.Menus;
+using RetakesAllocator.Hud;
 using RetakesAllocatorCore;
 using RetakesAllocatorCore.Config;
 using RetakesAllocatorCore.Db;
@@ -25,7 +26,7 @@ using RetakesPluginShared.Events;
 
 namespace RetakesAllocator;
 
-[MinimumApiVersion(201)]
+[MinimumApiVersion(380)]
 public class RetakesAllocator : BasePlugin
 {
     public override string ModuleName => "Retakes Allocator Plugin";
@@ -35,6 +36,7 @@ public class RetakesAllocator : BasePlugin
 
     private readonly AllocatorMenuManager _allocatorMenuManager = new();
     private readonly AdvancedGunMenu _advancedGunMenu = new();
+    private RetakeHud? _hud;
     private readonly Dictionary<CCSPlayerController, Dictionary<ItemSlotType, CsItem>> _allocatedPlayerItems = new();
     private IRetakesPluginEventSender? RetakesPluginEventSender { get; set; }
 
@@ -65,6 +67,77 @@ public class RetakesAllocator : BasePlugin
         Log.Debug($"Loaded. Hot reload: {hotReload}");
         ResetState();
         Batteries.Init();
+
+        _hud = new RetakeHud(this, (player, round) =>
+            _allocatorMenuManager.GetMenu<VoteMenu>(MenuType.NextRoundVote).CastPanoramaVote(player, round));
+        Capabilities.RegisterPluginCapability(new PluginCapability<Func<CCSPlayerController, bool>>("retakes_allocator:round_toast"),
+            () => player => _hud?.HasRoundToast(player) == true);
+        RegisterListener<Listeners.OnCustomHudClicked>(_hud.Click);
+        RegisterListener<Listeners.OnMapEnd>(() => _hud?.Reset());
+        RegisterEventHandler<EventPlayerConnectFull>((ev, _) =>
+        {
+            var player = ev.Userid;
+            AddTimer(1.1f, () => _hud?.Join(player), TimerFlags.STOP_ON_MAPCHANGE);
+            _hud?.RefreshQueue();
+            return HookResult.Continue;
+        });
+        RegisterEventHandler<EventPlayerTeam>((ev, _) =>
+        {
+            var player = ev.Userid;
+            Server.NextFrame(() => _hud?.Join(player));
+            _hud?.RefreshQueue();
+            return HookResult.Continue;
+        });
+        RegisterEventHandler<EventPlayerDisconnect>((ev, _) =>
+        {
+            _hud?.Disconnect(ev.Userid);
+            return HookResult.Continue;
+        }, HookMode.Pre);
+        RegisterEventHandler<EventPlayerDeath>((ev, _) =>
+        {
+            _hud?.Close(ev.Userid);
+            return HookResult.Continue;
+        });
+        RegisterEventHandler<EventRoundPrestart>((_, _) =>
+        {
+            _hud?.RoundBoundary();
+            return HookResult.Continue;
+        });
+        RegisterEventHandler<EventRoundEnd>((_, _) =>
+        {
+            _hud?.BetweenRounds();
+            return HookResult.Continue;
+        });
+        RegisterEventHandler<EventRoundFreezeEnd>((_, _) =>
+        {
+            _hud?.RoundBoundary();
+            return HookResult.Continue;
+        });
+
+        AddCommand("css_guns", "Открыть снаряжение ретейка", (player, command) =>
+        {
+            if (player is { IsValid: true } && command.ArgCount == 1 && _hud?.OpenGuns(player) != true)
+                _ = _advancedGunMenu.OpenMenuForPlayerAsync(player);
+        });
+        AddCommand("css_guns_legacy", "Открыть прежнее меню снаряжения ретейка", (player, command) =>
+        {
+            if (player is { IsValid: true } && command.ArgCount == 1)
+            {
+                _hud?.Close(player);
+                _ = _advancedGunMenu.OpenMenuForPlayerAsync(player);
+            }
+        });
+        AddCommand("css_retake", "Как играть в ретейк", (player, _) =>
+        {
+            if (player is { IsValid: true })
+                _hud?.Help(player);
+        });
+        AddCommand("css_retake_close", "Закрыть интерфейс ретейка", (player, _) => _hud?.Close(player));
+        AddCommand("css_retake_admin", "Управление ретейком", (player, _) =>
+        {
+            if (player is { IsValid: true })
+                _hud?.OpenAdmin(player);
+        });
 
         foreach (var command in BuyMenuCommands)
         {
@@ -160,6 +233,8 @@ public class RetakesAllocator : BasePlugin
     public override void Unload(bool hotReload)
     {
         Log.Debug("Unloaded");
+        _hud?.Unload();
+        _hud = null;
         _advancedGunMenu.Cleanup();
         ResetState(loadConfig: false);
         Queries.Disconnect();
@@ -201,6 +276,7 @@ public class RetakesAllocator : BasePlugin
         Action? handler = @event switch
         {
             AllocateEvent => HandleAllocateEvent,
+            AnnounceBombsiteEvent announcement => () => _hud?.RoundStarted(announcement.Bombsite),
             _ => null
         };
         handler?.Invoke();
@@ -226,7 +302,8 @@ public class RetakesAllocator : BasePlugin
             return;
         }
 
-        _allocatorMenuManager.OpenMenuForPlayer(player!, MenuType.NextRoundVote);
+        if (_hud?.OpenVote(player!) != true)
+            _allocatorMenuManager.OpenMenuForPlayer(player!, MenuType.NextRoundVote);
     }
 
     [ConsoleCommand("css_gun")]
@@ -507,6 +584,7 @@ public class RetakesAllocator : BasePlugin
     {
         commandInfo.ReplyToCommand($"{MessagePrefix}{Translator.Instance["command.reload_config", ModuleVersion]}");
         Configs.Load(ModuleDirectory);
+        _hud?.Reset();
         RoundTypeManager.Instance.Initialize();
     }
 
@@ -1103,7 +1181,20 @@ public class RetakesAllocator : BasePlugin
 
         if (!string.IsNullOrEmpty(Configs.GetConfigData().InGameGunMenuCenterCommands))
         {
-            _advancedGunMenu.OnEventPlayerChat(@event, info);
+            // CounterStrikeSharp owns !guns and /guns through css_guns. Preserve
+            // the allocator's additional configured plain-chat aliases.
+            var text = (@event.Text ?? "").Trim();
+            if (text.Equals("!guns", StringComparison.OrdinalIgnoreCase) ||
+                text.Equals("/guns", StringComparison.OrdinalIgnoreCase))
+                return HookResult.Continue;
+
+            var chatPlayer = Utilities.GetPlayerFromUserid(@event.Userid);
+            if (chatPlayer is not { IsValid: true } ||
+                !Configs.GetConfigData().InGameGunMenuCenterCommands.Split(',',
+                    StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                    .Contains(text, StringComparer.OrdinalIgnoreCase) ||
+                _hud?.OpenGuns(chatPlayer) != true)
+                _advancedGunMenu.OnEventPlayerChat(@event, info);
         }
 
         var eventplayer = @event.Userid;
