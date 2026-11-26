@@ -719,21 +719,8 @@ public class RetakesAllocator : BasePlugin
         }
 
         if (item is CsItem.Taser)
-        {
-            var config = Configs.GetConfigData();
-            if (!config.IsZeusEnabled())
-            {
-                return RetStop();
-            }
+            return CanBuyZeus(Helpers.GetSteamId(player)) ? HookResult.Continue : RetStop();
 
-            var steamId = Helpers.GetSteamId(player);
-            if (steamId == 0)
-            {
-                return RetStop();
-            }
-
-            return Queries.IsZeusEnabled(steamId) ? HookResult.Continue : RetStop();
-        }
         if (!WeaponHelpers.IsUsableWeapon(item))
         {
             return RetStop();
@@ -765,6 +752,9 @@ public class RetakesAllocator : BasePlugin
         return RetStop();
     }
 
+    private static bool CanBuyZeus(ulong steamId) =>
+        steamId != 0 && Configs.GetConfigData().IsZeusEnabled() && Queries.IsZeusEnabled(steamId);
+
     [GameEventHandler]
     public HookResult OnPostItemPurchase(EventItemPurchase @event, GameEventInfo info)
     {
@@ -785,6 +775,11 @@ public class RetakesAllocator : BasePlugin
         var item = Utils.ToEnum<CsItem>(@event.Weapon);
         var team = controller.Team;
         var playerId = Helpers.GetSteamId(controller);
+
+        // The native hook allows opted-in Zeus purchases. They are not loadout-slot changes.
+        if (item is CsItem.Taser && CanBuyZeus(playerId))
+            return HookResult.Continue;
+
         var isPreferred = WeaponHelpers.IsPreferred(team, item);
         var roundType = RoundTypeManager.Instance.GetCurrentRoundType();
         var debug = Log.IsEnabled(LogLevel.Debug);
