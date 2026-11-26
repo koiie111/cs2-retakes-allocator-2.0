@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>RETAKE #17 · Макет HUD</title>
+  <link rel="stylesheet" href="preview.css">
+  <script src="preview.js" defer></script>
+</head>
+<body>
+  <main class="workspace">
+    <header class="preview-header">
+      <div class="identity">
+        <span class="mark" aria-hidden="true">17</span>
+        <div><h1>RETAKE HUD</h1><p>Интерактивный макет</p></div>
+      </div>
+      <div class="segments" role="group" aria-label="Роль">
+        <button data-role="new" aria-pressed="true">Новичок</button>
+        <button data-role="player" aria-pressed="false">Игрок</button>
+        <button data-role="admin" aria-pressed="false">Админ</button>
+      </div>
+    </header>
+    <section class="stage" id="stage" aria-label="Игровой кадр">
+      <div class="scene" aria-hidden="true"></div>
+      <div class="game-reference" aria-hidden="true">
+        <div class="radar"><img src="assets/radar.webp" alt=""></div>
+        <div class="score"><b>3</b><time id="game-clock">0:29</time><b>2</b></div>
+        <div class="crosshair"></div>
+        <div class="vitals"><b>100</b> <span>♥</span> <b>100</b> <span>⬢</span></div>
+        <div class="ammo"><b>25</b> / 90</div>
+      </div>
+      <div class="indicator" id="indicator" role="status"></div>
+      <div class="modal-layer" id="modal-layer" hidden>
+        <section class="panel" id="panel" role="dialog" aria-modal="true" aria-labelledby="panel-title"></section>
+      </div>
+    </section>
+    <footer class="preview-controls">
+      <div class="control-block">
+        <span>Сценарий</span>
+        <div class="segments" role="group" aria-label="Сценарий">
+          <button data-scenario="join">Подключение</button>
+          <button data-scenario="queue">Очередь</button>
+          <button data-scenario="a">Раунд A</button>
+          <button data-scenario="b">Раунд B</button>
+        </div>
+      </div>
+      <div class="control-block">
+        <span>Игровой кадр</span>
+        <div class="segments" role="group" aria-label="Пропорции кадра">
+          <button data-ratio="wide" aria-pressed="true">16:9</button>
+          <button data-ratio="classic" aria-pressed="false">4:3</button>
+        </div>
+        <div class="segments" role="group" aria-label="Освещение карты">
+          <button data-light="day" aria-pressed="true">Светло</button>
+          <button data-light="night" aria-pressed="false">Темно</button>
+        </div>
+      </div>
+    </footer>
+    <nav class="preview-shortcuts" aria-label="Вызов игровых команд">
+      <button data-side aria-label="Переключить игровую сторону">Сторона: CT</button>
+      <button data-open="help"><code>!retake</code> Справка</button>
+      <button data-open="gear"><code>!guns</code> Снаряжение</button>
+      <button data-open="admin" hidden>Админ-панель</button>
+      <button data-reset>Сбросить приветствие</button>
+      <button data-features aria-pressed="false" hidden>Показать выключенные функции</button>
+    </nav>
+  </main>
+</body>
+</html>
+
