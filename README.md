@@ -10,15 +10,16 @@ Allocator plugin that runs alongside B3none's [cs2-retakes](https://github.com/b
 - Optional bombsite HUD/chat announcements and signature auto-update switches under `Config`.
 
 ## Requirements
-- CounterStrikeSharp 1.0.374 or newer (.NET 10).
+- CounterStrikeSharp 1.0.380 or newer with the .NET 10 runtime.
 - B3none's cs2-retakes with `EnableFallbackAllocation` disabled.
-- Release zip from this repo (includes sqlite runtimes, SharpModMenu, and CSSUniversalMenuAPI).
+- Install CSSUniversalMenuAPI in the CounterStrikeSharp shared directory. For the legacy menu install its SharpModMenu driver. CI packages the allocator and its SQLite runtimes.
+- For the optional Panorama HUD on RETAKE #17, use the companion core and follow [addon setup and client verification](addon/README.md).
 
 ## Installation
 1. Stop the server.
 2. Download the latest release from this repo.
-3. Extract `compiled/RetakesAllocator.zip` into `game/csgo/addons/counterstrikesharp/`, preserving its `plugins/`, `shared/`, and `configs/` folders.
-4. Start once to generate `config/config.json`, then edit it (see below).
+3. Install the folder containing `RetakesAllocator.dll`, `lang/` and `runtimes/` as `game/csgo/addons/counterstrikesharp/plugins/RetakesAllocator/`. The Windows `compile.ps1` archive already contains the `plugins/` directory and extracts at the CounterStrikeSharp root.
+4. Start once to generate `addons/counterstrikesharp/configs/plugins/RetakesAllocator/config.json`, then edit it (see below).
 5. Optional buy-menu support: in `game/csgo/cfg/cs2-retakes/retakes.cfg` set  
    `mp_buy_anywhere 1`, `mp_buytime 60000`, `mp_maxmoney 65535`, `mp_startmoney 65535`, `mp_afterroundmoney 65535`.
 

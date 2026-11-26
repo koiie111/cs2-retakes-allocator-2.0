@@ -9,26 +9,47 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="CounterStrikeSharp.API" Version="1.0.374" />
+        <PackageReference Include="CounterStrikeSharp.API" Version="1.0.380" ExcludeAssets="runtime" />
         <PackageReference Include="CSSUniversalMenuAPI" Version="0.4.0" ExcludeAssets="runtime" />
-        <PackageReference Include="RetakesPluginShared" Version="2.0.0" />
+        <PackageReference Include="RetakesPluginShared" Version="2.0.0" ExcludeAssets="runtime" />
     </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\RetakesAllocatorCore\RetakesAllocatorCore.csproj" />
     </ItemGroup>
 
+    <!-- Runtime provided by CounterStrikeSharp/shared/PlayerSettingsApi. -->
+    <PropertyGroup Condition="'$(PlayerSettingsApiPath)' != ''">
+        <DefineConstants>$(DefineConstants);RETAKE_PLAYER_SETTINGS</DefineConstants>
+    </PropertyGroup>
+    <ItemGroup Condition="'$(PlayerSettingsApiPath)' != ''">
+        <Reference Include="PlayerSettingsApi">
+            <HintPath>$(PlayerSettingsApiPath)</HintPath>
+            <Private>false</Private>
+        </Reference>
+    </ItemGroup>
+
     <Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition=" '$(CopyPath)' != '' and $(Configuration) == 'Debug' and '$(OS)' == 'Windows_NT'">
         <Exec Command="powershell mkdir -p &quot;$(CopyPath)&quot;" ContinueOnError="true" />
         <Exec Command="powershell Copy-Item -Recurse -Force &quot;$(TargetDir)* $(CopyPath)&quot; "/>
     </Target>
-    <Target Name="PostBuildRelease" AfterTargets="PostBuildEvent" Condition="$(Configuration) == 'Release' and '$(OS)' == 'Windows_NT'">
-        <Exec Command="powershell rm -Recurse -Force &quot;$(TargetDir)..\$(TargetName)&quot; " ContinueOnError="true"/>
-        <Exec Command="powershell mkdir -p &quot;$(TargetDir)..\$(TargetName)&quot;" />
-        <Exec Command="powershell cp -Force &quot;$(TargetDir)* $(TargetDir)..\$(TargetName)&quot;" />
-        <Exec Command="powershell cp -Force -Recurse &quot;$(TargetDir)runtimes\linux-x64 $(TargetDir)..\$(TargetName)\runtimes&quot;" />
-        <Exec Command="powershell cp -Force -Recurse &quot;$(TargetDir)runtimes\win-x64 $(TargetDir)..\$(TargetName)\runtimes&quot;" />
-        <Exec Command="powershell Compress-Archive -Force -Path &quot;$(TargetDir)..\$(TargetName)\*&quot; -DestinationPath &quot;$(TargetDir)..\$(TargetName).zip&quot; " />
+    <Target Name="PostBuildRelease" AfterTargets="PostBuildEvent" Condition="$(Configuration) == 'Release' and '$(OS)' == 'Windows_NT' and '$(SkipRetakesPackaging)' != 'true'">
+        <PropertyGroup>
+            <PackageDir>$(TargetDir)..\$(TargetName)</PackageDir>
+        </PropertyGroup>
+        <RemoveDir Directories="$(PackageDir)" />
+        <ItemGroup>
+            <PackageFile Include="$(TargetDir)**\*" Exclude="$(TargetDir)runtimes\**\*;$(TargetDir)CounterStrikeSharp.API.dll" />
+            <PackageRuntime Include="$(TargetDir)runtimes\linux-x64\**\*">
+                <Platform>linux-x64</Platform>
+            </PackageRuntime>
+            <PackageRuntime Include="$(TargetDir)runtimes\win-x64\**\*">
+                <Platform>win-x64</Platform>
+            </PackageRuntime>
+        </ItemGroup>
+        <Copy SourceFiles="@(PackageFile)" DestinationFiles="@(PackageFile->'$(PackageDir)\%(RecursiveDir)%(Filename)%(Extension)')" />
+        <Copy SourceFiles="@(PackageRuntime)" DestinationFiles="@(PackageRuntime->'$(PackageDir)\runtimes\%(Platform)\%(RecursiveDir)%(Filename)%(Extension)')" />
+        <ZipDirectory SourceDirectory="$(PackageDir)" DestinationFile="$(PackageDir).zip" Overwrite="true" />
     </Target>
     <ItemGroup>
         <Compile Remove="**/bin/**/*.cs" />

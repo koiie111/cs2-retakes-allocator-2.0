@@ -1,30 +1,19 @@
-﻿#!/usr/bin/env bash
+#!/usr/bin/env bash
 
-TARGET_NAME="RetakesAllocator"
+set -euo pipefail
 TARGET_DIR="./bin/Release/net10.0"
 NEW_DIR="./bin/Release/RetakesAllocator"
 SHARPMODMENU_ROOT="${SHARPMODMENU_ROOT:-../../SharpModMenu}"
 SHARPMODMENU_COMPILED="$SHARPMODMENU_ROOT/compiled/counterstrikesharp"
 
-echo $TARGET_NAME
-echo $TARGET_DIR
-echo $NEW_DIR
-
-ls $TARGET_DIR/**
-
-echo cp -r $TARGET_DIR $NEW_DIR
-cp -r $TARGET_DIR $NEW_DIR
-echo rm -rf "$NEW_DIR/runtimes"
-rm -rf "$NEW_DIR/runtimes"
-echo mkdir "$NEW_DIR/runtimes"
+# Replace the staging tree on reruns to avoid shipping stale files.
+rm -rf -- ./bin/Release/RetakesAllocator
+mkdir -p "$NEW_DIR"
+cp -R "$TARGET_DIR/." "$NEW_DIR/"
+rm -rf -- "$NEW_DIR/runtimes"
 mkdir "$NEW_DIR/runtimes"
-echo cp -rf "$TARGET_DIR/runtimes/linux-x64" "$NEW_DIR/runtimes"
-cp -rf "$TARGET_DIR/runtimes/linux-x64" "$NEW_DIR/runtimes"
-echo cp -rf "$TARGET_DIR/runtimes/win-x64" "$NEW_DIR/runtimes"
-cp -rf "$TARGET_DIR/runtimes/win-x64" "$NEW_DIR/runtimes"
-
-# Remove unnecessary files
-rm "$NEW_DIR/CounterStrikeSharp.API.dll"
+cp -R "$TARGET_DIR/runtimes/linux-x64" "$TARGET_DIR/runtimes/win-x64" "$NEW_DIR/runtimes/"
+rm -f "$NEW_DIR/CounterStrikeSharp.API.dll"
 
 if [ -d "$SHARPMODMENU_COMPILED" ]; then
   echo "Copying SharpModMenu from: $SHARPMODMENU_COMPILED"
@@ -39,5 +28,3 @@ if [ -d "$SHARPMODMENU_COMPILED" ]; then
 else
   echo "WARNING: SharpModMenu compiled output not found at $SHARPMODMENU_COMPILED. Build SharpModMenu first or set SHARPMODMENU_ROOT."
 fi
-
-tree ./bin

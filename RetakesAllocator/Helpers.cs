@@ -3,6 +3,7 @@ using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Admin;
 using CounterStrikeSharp.API.Modules.Commands;
+using CounterStrikeSharp.API.Modules.Cvars;
 using CounterStrikeSharp.API.Modules.Entities.Constants;
 using CounterStrikeSharp.API.Modules.Utils;
 using RetakesAllocatorCore.Config;
@@ -44,7 +45,14 @@ public static class Helpers
             return 0;
         }
 
-        return player?.AuthorizedSteamID?.SteamId64 ?? 0;
+        if (player!.AuthorizedSteamID?.SteamId64 is > 0 and var authorizedId)
+            return authorizedId;
+
+        // A LAN listen server does not send the Steam authorization callback
+        // for its local controller. The public server still requires Steam auth.
+        return !player.IsBot && ConVar<bool>.Find("sv_lan")?.Value == true
+            ? player.SteamID
+            : 0;
     }
 
     public static CsTeam GetTeam(CCSPlayerController player)

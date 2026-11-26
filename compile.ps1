@@ -20,9 +20,9 @@ Remove-Item -Recurse -Force $compiledRoot -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Path $pluginTarget -Force | Out-Null
 
 dotnet restore $solution
-if ($LASTEXITCODE -ne 0) { throw 'Dependency restore failed.' }
-dotnet build $solution -c Release --no-restore --nologo
-if ($LASTEXITCODE -ne 0) { throw 'Build failed.' }
+if ($LASTEXITCODE -ne 0) { throw "Restore failed." }
+dotnet build $solution -c Release --no-restore --nologo -p:SkipRetakesPackaging=true
+if ($LASTEXITCODE -ne 0) { throw "Release build failed." }
 
 if (-not (Test-Path $buildOutput)) {
     throw "Build output not found at $buildOutput"

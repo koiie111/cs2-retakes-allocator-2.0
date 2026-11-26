@@ -1,0 +1,115 @@
+<root>
+<styles><include src="s2r://panorama/styles/custom_game/retake17.vcss_c" /></styles>
+<Panel class="Outer" hittest="false">
+<Panel id="menu" class="Menu" hittest="false">
+<Panel class="Card">
+
+<Button id="close" class="Close">
+  <Panel class="Cross Slash" hittest="false" />
+  <Panel class="Cross Backslash" hittest="false" />
+</Button>
+<Panel id="intro" class="Intro">
+  <Label class="Kicker" text="RETAKE #17" hittest="false" />
+  <Panel class="IntroRow">
+    <Panel class="IntroCopy">
+      <Label class="Headline" text="Как играть&#10;в ретейк" hittest="false" />
+      <Label class="Muted" text="Бомба уже на точке A или B." hittest="false" />
+    </Panel>
+    <Panel class="Hero" hittest="false">
+      <Panel class="Agent AgentCt" hittest="false" />
+      <Panel class="Agent AgentT" hittest="false" />
+      <Label class="MapName" text="MIRAGE · A" hittest="false" />
+    </Panel>
+  </Panel>
+  <Panel class="RoleRow">
+    <Panel class="Role Defender">
+      <Panel class="RoleIcon CtIcon" hittest="false" />
+      <Panel class="RoleCopy">
+        <Label class="RoleName Blue" text="Защита · CT" hittest="false" />
+        <Label class="Goal" text="Обезвредь бомбу." hittest="false" />
+      </Panel>
+    </Panel>
+    <Panel class="Role Attacker">
+      <Panel class="RoleIcon TIcon" hittest="false" />
+      <Panel class="RoleCopy">
+        <Label class="RoleName Orange" text="Атака · T" hittest="false" />
+        <Label class="Goal" text="Защити бомбу до взрыва." hittest="false" />
+      </Panel>
+    </Panel>
+  </Panel>
+  <Panel class="Footer">
+    <Button id="intro_close" class="Action Primary"><Label text="Понятно" hittest="false" /></Button>
+    <Button id="intro_commands" class="Action"><Label text="Команды" hittest="false" /></Button>
+    <Button id="intro_skip" class="Action Check">
+      <Panel class="Checkbox" hittest="false" /><Label text="Больше не показывать" hittest="false" />
+    </Button>
+  </Panel>
+</Panel>
+<Panel id="body" class="Body">
+  <Label class="Kicker" text="RETAKE #17" hittest="false" />
+  <Label id="title" class="Title" text="{s:text}" hittest="false" />
+  <Panel class="Caption">
+    <Panel id="team" class="TeamLogo" hittest="false" />
+    <Label id="subtitle" class="Muted" text="{s:text}" hittest="false" />
+  </Panel>
+<Panel class="GridRow">
+<Button id="item_0" class="Item">
+<Panel id="icon_0" class="ItemIcon" hittest="false" />
+<Label id="name_0" class="ItemName" text="{s:text}" hittest="false" />
+<Label id="detail_0" class="ItemDetail" text="{s:text}" hittest="false" />
+</Button>
+<Button id="item_1" class="Item">
+<Panel id="icon_1" class="ItemIcon" hittest="false" />
+<Label id="name_1" class="ItemName" text="{s:text}" hittest="false" />
+<Label id="detail_1" class="ItemDetail" text="{s:text}" hittest="false" />
+</Button>
+</Panel>
+<Panel class="GridRow">
+<Button id="item_2" class="Item">
+<Panel id="icon_2" class="ItemIcon" hittest="false" />
+<Label id="name_2" class="ItemName" text="{s:text}" hittest="false" />
+<Label id="detail_2" class="ItemDetail" text="{s:text}" hittest="false" />
+</Button>
+<Button id="item_3" class="Item">
+<Panel id="icon_3" class="ItemIcon" hittest="false" />
+<Label id="name_3" class="ItemName" text="{s:text}" hittest="false" />
+<Label id="detail_3" class="ItemDetail" text="{s:text}" hittest="false" />
+</Button>
+</Panel>
+<Panel class="GridRow">
+<Button id="item_4" class="Item">
+<Panel id="icon_4" class="ItemIcon" hittest="false" />
+<Label id="name_4" class="ItemName" text="{s:text}" hittest="false" />
+<Label id="detail_4" class="ItemDetail" text="{s:text}" hittest="false" />
+</Button>
+<Button id="item_5" class="Item">
+<Panel id="icon_5" class="ItemIcon" hittest="false" />
+<Label id="name_5" class="ItemName" text="{s:text}" hittest="false" />
+<Label id="detail_5" class="ItemDetail" text="{s:text}" hittest="false" />
+</Button>
+</Panel>
+<Panel class="GridRow">
+<Button id="item_6" class="Item">
+<Panel id="icon_6" class="ItemIcon" hittest="false" />
+<Label id="name_6" class="ItemName" text="{s:text}" hittest="false" />
+<Label id="detail_6" class="ItemDetail" text="{s:text}" hittest="false" />
+</Button>
+<Button id="item_7" class="Item">
+<Panel id="icon_7" class="ItemIcon" hittest="false" />
+<Label id="name_7" class="ItemName" text="{s:text}" hittest="false" />
+<Label id="detail_7" class="ItemDetail" text="{s:text}" hittest="false" />
+</Button>
+</Panel>
+<Label id="status" class="Status" text="{s:text}" hittest="false" />
+<Panel class="Footer">
+<Button id="back" class="Action"><Label id="back_label" text="Назад" hittest="false" /></Button>
+<Button id="previous" class="Action"><Label id="previous_label" text="‹" hittest="false" /></Button>
+<Button id="next" class="Action"><Label id="next_label" text="›" hittest="false" /></Button>
+<Button id="more" class="Action"><Label id="more_label" text="{s:text}" hittest="false" /></Button>
+<Button id="play" class="Action Primary"><Label id="play_label" text="В игру" hittest="false" /></Button>
+</Panel>
+</Panel>
+</Panel>
+</Panel>
+</Panel>
+</root>

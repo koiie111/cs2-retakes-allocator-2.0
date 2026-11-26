@@ -21,7 +21,12 @@ public class NextRoundVoteManager : AbstractVoteManager
 
     protected override void HandleVoteResult(string option)
     {
-        RoundTypeManager.Instance.SetNextRoundTypeOverride(RoundTypeHelpers.ParseRoundType(option));
-        PrintToServer(Translator.Instance["vote.complete_next_round", option]);
+        if (RoundTypeHelpers.ParseRoundType(option) is not { } roundType)
+        {
+            return;
+        }
+
+        RoundTypeManager.Instance.SetNextRoundTypeOverride(roundType);
+        PrintToServer(Translator.Instance["vote.complete_next_round", RoundTypeHelpers.TranslateRoundTypeName(roundType)]);
     }
 }
