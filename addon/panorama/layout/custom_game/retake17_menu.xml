@@ -48,7 +48,7 @@
 <Panel id="body" class="Body">
   <Label class="Kicker" text="RETAKE #17" hittest="false" />
   <Label id="title" class="Title" text="{s:text}" hittest="false" />
-  <Panel class="Caption">
+  <Panel id="caption" class="Caption">
     <Panel id="team" class="TeamLogo" hittest="false" />
     <Label id="subtitle" class="Muted" text="{s:text}" hittest="false" />
   </Panel>

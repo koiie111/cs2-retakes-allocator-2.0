@@ -13,7 +13,7 @@ Label { color: #f3f5f2; font-family: Arial; font-size: 21px; white-space: nowrap
 .IntroCopy { width: 378px; flow-children: down; vertical-align: center; }
 .Kicker { color: #dcfa7b; font-size: 18px; font-weight: bold; letter-spacing: 3px; }
 .Headline { font-size: 45px; font-weight: bold; white-space: normal; }
-.Title { width: 716px; margin-top: 6px; font-size: 43px; font-weight: bold; }
+.Title { width: 716px; margin-top: 6px; margin-bottom: 8px; font-size: 43px; font-weight: bold; }
 .Muted { color: #b8c4bf; font-size: 20px; vertical-align: center; }
 .Hero { width: 381px; height: 188px; border-radius: 8px; background-image: url("s2r://materials/retake17/mirage.vtex"); background-size: 381px 188px; background-position: center; }
 .Agent { width: 156px; height: 190px; vertical-align: bottom; background-size: 100% 100%; background-position: center bottom; background-repeat: no-repeat; }
@@ -33,7 +33,7 @@ Label { color: #f3f5f2; font-family: Arial; font-size: 21px; white-space: nowrap
 .TeamLogo { width: 28px; height: 28px; vertical-align: center; margin-right: 9px; }
 .CtIcon { background-image: url("s2r://panorama/images/icons/ct_logo.vsvg"); }
 .TIcon { background-image: url("s2r://panorama/images/icons/t_logo.vsvg"); }
-.Caption { height: 34px; margin-bottom: 6px; }
+.Caption { height: 28px; margin-bottom: 8px; }
 .Close { width: 40px; height: 40px; horizontal-align: right; vertical-align: top; ignore-parent-flow: true; z-index: 1; border: 1px solid #414948; border-radius: 8px; background-color: #191f20; }
 .Cross { width: 18px; height: 3px; horizontal-align: center; vertical-align: center; background-color: #f3f5f2; border-radius: 1px; }
 .Slash { transform: rotateZ(45deg); }
@@ -42,11 +42,10 @@ Label { color: #f3f5f2; font-family: Arial; font-size: 21px; white-space: nowrap
 .Item { width: 375px; height: 103px; margin: 0px 10px 9px 0px; padding: 8px 13px; flow-children: down; border: 1px solid #343b3b; border-radius: 8px; background-color: #252c2d; }
 .Item:last-child { margin-right: 0px; }
 .Item.Selected { background-color: #36462d; border-color: #a3c46a; }
-.ItemIcon { width: 111px; height: 37px; background-position: left center; background-repeat: no-repeat; background-size: 100% 100%; }
-.ItemIcon.Small { width: 34px; }
-.ItemName { width: 100%; font-size: 21px; font-weight: bold; }
-.ItemDetail { width: 100%; font-size: 16px; color: #b3c0ba; }
-.ItemIcon.Off, .ItemDetail.Off, .Item.Off, .Action.Off, .TeamLogo.Off, .Status.Off { visibility: collapse; }
+.ItemIcon { width: 111px; height: 37px; background-position: left center; background-repeat: no-repeat; background-size: 33px 33px; }
+.ItemName { width: 100%; height: 25px; font-size: 21px; font-weight: bold; }
+.ItemDetail { width: 100%; height: 19px; font-size: 16px; color: #b3c0ba; }
+
 .Status { color: #dcfa7b; font-size: 19px; margin-top: 3px; }
 .Footer { width: 761px; margin-top: 16px; }
 .Action { height: 45px; margin-right: 10px; padding: 0px 15px; border: 1px solid #343b3b; border-radius: 8px; background-color: #252c2d; }
@@ -99,3 +98,26 @@ Label { color: #f3f5f2; font-family: Arial; font-size: 21px; white-space: nowrap
 .i-ump45 { background-image: url("s2r://panorama/images/icons/equipment/ump45.vsvg"); background-size: 94px 36px; }
 .i-usp_silencer { background-image: url("s2r://panorama/images/icons/equipment/usp_silencer.vsvg"); background-size: 78px 36px; }
 .i-xm1014 { background-image: url("s2r://panorama/images/icons/equipment/xm1014.vsvg"); background-size: 105px 34px; }
+
+/* Navigation and admin actions use base-game Panorama icons. */
+.i-help { background-image: url("s2r://panorama/images/icons/ui/info.vsvg"); }
+.i-commands { background-image: url("s2r://panorama/images/icons/ui/message.vsvg"); }
+.i-admin { background-image: url("s2r://panorama/images/icons/ui/shield.vsvg"); }
+.i-options { background-image: url("s2r://panorama/images/icons/ui/settings_sliders.vsvg"); }
+.i-search { background-image: url("s2r://panorama/images/icons/ui/search.vsvg"); }
+.i-vote { background-image: url("s2r://panorama/images/icons/ui/vote_check.vsvg"); }
+.i-switch { background-image: url("s2r://panorama/images/icons/ui/voteteamswitch.vsvg"); }
+.i-team-t { background-image: url("s2r://panorama/images/icons/t_logo.vsvg"); }
+.i-team-ct { background-image: url("s2r://panorama/images/icons/ct_logo.vsvg"); }
+.i-teams { background-image: url("s2r://panorama/images/icons/ui/competitive_teams.vsvg"); }
+.i-site { background-image: url("s2r://panorama/images/icons/ui/pin.vsvg"); }
+.i-site-a { background-image: url("s2r://panorama/images/icons/ui/map_bombzone_a.vsvg"); }
+.i-site-b { background-image: url("s2r://panorama/images/icons/ui/map_bombzone_b.vsvg"); }
+.i-clock { background-image: url("s2r://panorama/images/icons/ui/clock.vsvg"); }
+.i-settings { background-image: url("s2r://panorama/images/icons/ui/settings.vsvg"); }
+.i-maps { background-image: url("s2r://panorama/images/icons/ui/news.vsvg"); }
+.i-spawn { background-image: url("s2r://panorama/images/icons/ui/edit.vsvg"); }
+.i-queue { background-image: url("s2r://panorama/images/icons/ui/group_queue.vsvg"); }
+.i-refresh { background-image: url("s2r://panorama/images/icons/ui/refresh.vsvg"); }
+.i-remove { background-image: url("s2r://panorama/images/icons/ui/trash.vsvg"); }
+.i-done { background-image: url("s2r://panorama/images/icons/ui/check.vsvg"); }
