@@ -89,7 +89,16 @@ button:disabled { cursor: default; opacity: .48; }
 .panel:not(.welcome) h2 { font-size: clamp(21px, 2.6vw, 32px); }
 .panel p { line-height: 1.42; margin: 0; }
 .eyebrow { font: 750 11px ui-monospace, Consolas, monospace; letter-spacing: .12em; color: #c7e17d; }
-.close { width: 32px; height: 32px; position: absolute; right: 12px; top: 12px; z-index: 1; font-size: 23px; line-height: 1; background: #181e1eea; }
+.close {
+  width: 32px; height: 32px; padding: 0; position: absolute; right: 12px; top: 12px;
+  z-index: 1; display: grid; place-items: center; background: #181e1eea;
+}
+.close::before, .close::after {
+  content: ""; grid-area: 1 / 1; width: 13px; height: 2px;
+  border-radius: 1px; background: currentColor;
+}
+.close::before { transform: rotate(45deg); }
+.close::after { transform: rotate(-45deg); }
 .intro { display: grid; grid-template-columns: 1.04fr 1fr; align-items: center; gap: 17px; }
 .intro p { max-width: 260px; color: #c9d1cd; font-size: clamp(13px, 1.55vw, 16px); }
 .hero {
@@ -103,8 +112,12 @@ button:disabled { cursor: default; opacity: .48; }
 .team b { display: block; font-size: 12px; color: var(--ct); }
 .team.attack b { color: var(--t); }
 .team p { font-size: clamp(12px, 1.35vw, 15px); margin-top: 2px; font-weight: 650; }
-.team-icon { flex: 0 0 34px; min-height: 32px; display: grid; place-items: center; border-radius: 5px; background: #16262e; color: var(--ct); font: 800 13px ui-monospace, monospace; }
-.attack .team-icon { background: #2c2118; color: var(--t); }
+.team-icon { flex: 0 0 36px; height: 36px; display: grid; place-items: center; border-radius: 5px; background: #16262e; }
+.attack .team-icon { background: #2c2118; }
+.team-logo { display: block; flex: none; width: 19px; height: 19px; object-fit: contain; }
+.team-icon .team-logo { width: 27px; height: 27px; }
+.side-label { display: inline-flex; align-items: center; gap: 5px; vertical-align: middle; }
+.slot-caption { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; }
 .panel-footer { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .panel-footer .remember { margin-left: auto; }
 .action { min-height: 37px; padding: 7px 13px; font-size: 13px; font-weight: 650; }
@@ -124,6 +137,7 @@ button:disabled { cursor: default; opacity: .48; }
 .row[aria-pressed="true"], .tile[aria-pressed="true"] { border-color: #a3c46a; background: #36462d; }
 .weapon { min-height: 72px; position: relative; align-content: end; overflow: hidden; }
 .weapon img { width: 92px; height: 37px; object-fit: contain; object-position: left center; opacity: .93; }
+.weapon .weapon-option-icon { width: 27px; padding-block: 5px; }
 .weapon b { color: #f1f5f2; font-size: 13px; }
 .panel-status { color: var(--accent); font-size: 13px; min-height: 19px; margin: 6px 0; }
 .is-ct { color: var(--ct); }
@@ -146,7 +160,8 @@ button:disabled { cursor: default; opacity: .48; }
   .hero { min-height: 80px; max-height: 100px; aspect-ratio: auto; }
   .teams { margin-block: 10px; gap: 5px; }
   .team { padding: 7px; gap: 5px; }
-  .team-icon { flex-basis: 25px; min-height: 25px; font-size: 11px; }
+  .team-icon { flex-basis: 27px; height: 27px; }
+  .team-icon .team-logo { width: 22px; height: 22px; }
   .panel-footer .remember { margin-left: 0; }
   .weapon img { width: min(100%, 82px); }
   .control-block, .control-block > span { max-width: 100%; }

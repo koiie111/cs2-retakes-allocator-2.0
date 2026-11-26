@@ -59,10 +59,18 @@ function row(title, command, selected) {
 }
 
 function weapon(key, label, command, selected) {
-  const image = ["none", "random", "default"].includes(key) ? "" :
-    `<img src="assets/equipment/${key}.svg" alt="">`;
+  const isOption = ["none", "random", "default"].includes(key);
+  const icon = isOption ? uiIcon(key, "weapon-option-icon") : `<img src="assets/equipment/${key}.svg" alt="">`;
   const pressed = selected === undefined ? "" : `aria-pressed="${selected}"`;
-  return `<button class="tile weapon" data-action="${command}" ${pressed}>${image}${label}<b>${weaponNames[key]}</b></button>`;
+  return `<button class="tile weapon" data-action="${command}" ${pressed}>${icon}${label}<b>${weaponNames[key]}</b></button>`;
+}
+
+function uiIcon(name, className) {
+  return `<img class="${className}" src="assets/ui/${name}.svg" alt="">`;
+}
+
+function teamLogo(side) {
+  return uiIcon(side.toLowerCase(), "team-logo");
 }
 
 function heading(title, copy = "", eyebrow = "RETAKE #17") {
@@ -86,8 +94,8 @@ function welcome() {
       </figure>
     </div>
     <div class="teams">
-      <div class="team"><span class="team-icon" aria-hidden="true">◆</span><div><b>Защита · CT</b><p>Обезвредь бомбу.</p></div></div>
-      <div class="team attack"><span class="team-icon" aria-hidden="true">▲</span><div><b>Атака · T</b><p>Защити бомбу до взрыва.</p></div></div>
+      <div class="team"><span class="team-icon" aria-hidden="true">${teamLogo("CT")}</span><div><b>Защита · CT</b><p>Обезвредь бомбу.</p></div></div>
+      <div class="team attack"><span class="team-icon" aria-hidden="true">${teamLogo("T")}</span><div><b>Атака · T</b><p>Защити бомбу до взрыва.</p></div></div>
     </div>
     ${footer(action("Понятно", "close", true), action("Команды", "commands"),
       `<label class="remember"><input type="checkbox" id="skip-welcome" ${state.skipWelcome ? "checked" : ""}>Больше не показывать</label>`)}`;
@@ -118,7 +126,9 @@ function commands() {
 }
 
 function teamCaption() {
-  return state.gearSide === "CT" ? '<span class="is-ct">◆ Защита · CT</span>' : '<span class="is-t">▲ Атака · T</span>';
+  const side = state.gearSide;
+  const label = side === "CT" ? "Защита · CT" : "Атака · T";
+  return `<span class="side-label is-${side.toLowerCase()}">${teamLogo(side)}${label}</span>`;
 }
 
 function gear() {
@@ -126,14 +136,14 @@ function gear() {
   return heading("Снаряжение", teamCaption()) + `<div class="panel-body choices">${["primary", "secondary", "half", "pistol"].map(key =>
     weapon(preferences[state.gearSide][key], `<small>${slots[key].title}</small>`, `slot:${key}`)
   ).join("")}</div>` + (state.feedback ? status() : "") +
-    footer(action("Дополнительно", "extra"), action(`Снаряжение ${other}`, "other-gear"), action("В игру", "close", true));
+    footer(action("Дополнительно", "extra"), action(`<span class="side-label">${teamLogo(other)}Снаряжение ${other}</span>`, "other-gear"), action("В игру", "close", true));
 }
 
 function choices() {
   const slot = slots[state.slot];
   const options = slot.common || [...slot[state.gearSide], "default", "random"];
   const current = preferences[state.gearSide][state.slot];
-  return heading(slot.title, slot.note) + `<div class="panel-body choices">${options.map(key =>
+  return heading(slot.title, `<span class="slot-caption">${teamCaption()}<span>${slot.note}</span></span>`) + `<div class="panel-body choices">${options.map(key =>
     weapon(key, "", `set-weapon:${key}`, key === current)
   ).join("")}</div>` + status() + footer(action("Назад", state.slot === "sniper" ? "extra" : "gear-back"), action("В игру", "close", true));
 }
@@ -209,7 +219,7 @@ const adminScreens = new Set(["admin", "point", "round-type", "service", "maps",
 
 function renderPanel(focusAction) {
   panel.classList.toggle("welcome", state.screen === "welcome");
-  panel.innerHTML = '<button class="close" aria-label="Закрыть" data-action="close">×</button>' + screens[state.screen]();
+  panel.innerHTML = '<button class="close" aria-label="Закрыть" data-action="close"></button>' + screens[state.screen]();
   panel.tabIndex = -1;
   const sameAction = [...panel.querySelectorAll("button")].find(button => button.dataset.action === focusAction);
   (sameAction || panel).focus({ preventScroll: true });
@@ -260,7 +270,7 @@ function showRound() {
   clearTimeout(state.roundTimer);
   const goal = state.side === "CT" ? "Обезвредь бомбу" : "Защити бомбу до взрыва";
   const site = state.activePoint === "auto" ? state.scenario : state.activePoint;
-  indicator.innerHTML = `<span class="point" aria-label="Точка ${site.toUpperCase()}">${site.toUpperCase()}</span><span>${goal}</span>`;
+  indicator.innerHTML = `<span class="point" aria-label="Точка ${site.toUpperCase()}">${site.toUpperCase()}</span><span class="side-label">${teamLogo(state.side)}<span>${goal}</span></span>`;
   state.roundTimer = setTimeout(() => indicator.replaceChildren(), 6500);
   state.nextRound = "auto";
 }
@@ -378,7 +388,7 @@ document.querySelector(".workspace").addEventListener("click", event => {
   if (open) openCommand(open);
   if (button.hasAttribute("data-side")) {
     state.side = state.side === "CT" ? "T" : "CT";
-    button.textContent = `Сторона: ${state.side}`;
+    button.innerHTML = `<span class="side-label">${teamLogo(state.side)}Сторона: ${state.side}</span>`;
     if (state.scenario === "a" || state.scenario === "b") showRound();
   }
   if (button.hasAttribute("data-features")) {

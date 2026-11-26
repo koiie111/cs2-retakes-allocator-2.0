@@ -1,4 +1,4 @@
-﻿param(
+param(
     [Parameter(Mandatory)][string]$SitePublic,
     [Parameter(Mandatory)][string]$GameArchive,
     [Parameter(Mandatory)][string]$Source2Viewer,
@@ -17,6 +17,23 @@ foreach ($weapon in $weapons) {
     & $Source2Viewer -i $GameArchive -d -f "panorama/images/icons/equipment/$weapon.vsvg_c" -o $output
     if ($LASTEXITCODE -ne 0 -or !(Test-Path -LiteralPath $output)) {
         throw "Couldn't extract the CS2 equipment icon $weapon."
+    }
+}
+
+$ui = Join-Path $assets 'ui'
+New-Item -ItemType Directory -Path $ui -Force | Out-Null
+$uiIcons = @{
+    ct      = 'ct_logo'
+    t       = 't_logo'
+    default = 'ui/loadout'
+    random  = 'ui/random'
+    none    = 'ui/cancel'
+}
+foreach ($icon in $uiIcons.GetEnumerator()) {
+    $output = Join-Path $ui "$($icon.Key).svg"
+    & $Source2Viewer -i $GameArchive -d -f "panorama/images/icons/$($icon.Value).vsvg_c" -o $output
+    if ($LASTEXITCODE -ne 0 -or !(Test-Path -LiteralPath $output)) {
+        throw "Couldn't extract the CS2 UI icon $($icon.Value)."
     }
 }
 
