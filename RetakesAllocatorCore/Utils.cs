@@ -60,35 +60,41 @@ public static class Utils
         };
     }
 
-    public static T? ToEnum<T>(string str)
+    private static class EnumNames<T> where T : struct, Enum
     {
-        var enumType = typeof(T);
-        try
+        internal static readonly Dictionary<string, T> ByName = new(StringComparer.Ordinal);
+
+        static EnumNames()
         {
-            foreach (var name in Enum.GetNames(enumType))
+            foreach (var name in Enum.GetNames<T>())
             {
-                // Log.Write($"Enum name {name}");
-                var enumMemberAttribute =
-                    ((EnumMemberAttribute[]) enumType.GetField(name)!.GetCustomAttributes(typeof(EnumMemberAttribute),
-                        true)).SingleOrDefault();
-                // Log.Write($"Custom attribute: {enumMemberAttribute?.Value}");
-                if (enumMemberAttribute?.Value == str)
-                {
-                    return (T) Enum.Parse(enumType, name);
-                }
+                var attribute = (EnumMemberAttribute?)Attribute.GetCustomAttribute(
+                    typeof(T).GetField(name)!, typeof(EnumMemberAttribute));
+                if (attribute?.Value is { } value)
+                    ByName.TryAdd(value, Enum.Parse<T>(name));
             }
         }
-        catch (Exception e)
-        {
-            Log.Error($"Exception parsing enum {e.Message}");
-        }
-
-        return default;
     }
+
+    public static T ToEnum<T>(string? str) where T : struct, Enum =>
+        str is not null ? EnumNames<T>.ByName.GetValueOrDefault(str) : default;
+
+    private static readonly object MySqlVersionLock = new();
+    private static string? _mysqlConnection;
+    private static ServerVersion? _mysqlVersion;
 
     public static void SetupMySql(string connectionString, DbContextOptionsBuilder optionsBuilder)
     {
-        var version = ServerVersion.AutoDetect(connectionString);
+        ServerVersion version;
+        lock (MySqlVersionLock)
+        {
+            if (_mysqlVersion is null || _mysqlConnection != connectionString)
+            {
+                _mysqlVersion = ServerVersion.AutoDetect(connectionString);
+                _mysqlConnection = connectionString;
+            }
+            version = _mysqlVersion;
+        }
         optionsBuilder.UseMySql(connectionString, version);
     }
 

@@ -6,10 +6,15 @@ namespace RetakesAllocatorCore;
 
 public static class Log
 {
-    private static void Write(string message, LogLevel level)
+    public static bool IsEnabled(LogLevel level)
     {
         var currentLevel = Configs.IsLoaded() ? Configs.GetConfigData().LogLevel : LogLevel.Error;
-        if (currentLevel == LogLevel.None || level < currentLevel)
+        return currentLevel != LogLevel.None && level >= currentLevel;
+    }
+
+    private static void Write(string message, LogLevel level)
+    {
+        if (!IsEnabled(level))
         {
             return;
         }

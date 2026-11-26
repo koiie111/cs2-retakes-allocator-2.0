@@ -7,17 +7,9 @@ namespace RetakesAllocatorCore;
 
 public class OnWeaponCommandHelper
 {
-    public static string Handle(ICollection<string> args, ulong userId, RoundType? roundType, CsTeam currentTeam,
-        bool remove, out CsItem? outWeapon)
-    {
-        var result = HandleAsync(args, userId, roundType, currentTeam, remove).GetAwaiter().GetResult();
-        outWeapon = result.Item2;
-        return result.Item1;
-    }
-
     public static async Task<Tuple<string, CsItem?>> HandleAsync(ICollection<string> args, ulong userId,
         RoundType? roundType, CsTeam currentTeam,
-        bool remove)
+        bool remove, bool togglePreferred = false, bool removeAnyPreferred = false)
     {
         CsItem? outWeapon = null;
 
@@ -109,6 +101,16 @@ public class OnWeaponCommandHelper
         }
 
 
+        if (userId == 0)
+            return Ret(Translator.Instance["weapon_preference.not_saved"]);
+
+        if (isPreferred && togglePreferred)
+        {
+            var removed = await Queries.ToggleAwpWeaponPreferenceAsync(userId, team, weapon, removeAnyPreferred);
+            return Ret(Translator.Instance[removed ? "weapon_preference.unset_preference_preferred" :
+                "weapon_preference.set_preference_preferred", weapon.GetName()]);
+        }
+
         if (remove)
         {
             if (isPreferred)
@@ -149,11 +151,6 @@ public class OnWeaponCommandHelper
         if (allocateImmediately)
         {
             outWeapon = weapon;
-        }
-
-        if (userId == 0)
-        {
-            message = Translator.Instance["weapon_preference.not_saved"];
         }
 
         return Ret(message);

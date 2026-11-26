@@ -107,7 +107,10 @@ public class OnRoundPostStartHelper
             return weapons;
         }
 
-        var filteredWeapons = new List<CsItem>();
+        if (!preferredOverride.HasValue && !weapons.Any(weapon => GetSniperLimitType(weapon).HasValue))
+            return weapons;
+
+        var filteredWeapons = new List<CsItem>(weapons.Count);
         var currentPreferredType = preferredOverride.HasValue
             ? GetSniperLimitType(preferredOverride.Value)
             : null;
@@ -168,23 +171,14 @@ public class OnRoundPostStartHelper
         Func<T, bool> hasAwpPermission,
         Func<T, bool> hasSsgPermission,
         Func<T, bool> hasEnemyStuffPermission,
-        out RoundType currentRoundType
+        RoundType roundType,
+        IReadOnlyDictionary<ulong, PreferenceSnapshot> userSettingsByPlayerId
     ) where T : notnull
     {
-        var roundType = RoundTypeManager.Instance.GetNextRoundType();
-        currentRoundType = roundType;
-
         var tPlayers = new List<T>();
         var ctPlayers = new List<T>();
-        var playerIds = new List<ulong>();
         foreach (var player in allPlayers)
         {
-            var steamId = getSteamId(player);
-            if (steamId != 0)
-            {
-                playerIds.Add(steamId);
-            }
-
             var playerTeam = getTeam(player);
             if (playerTeam == CsTeam.Terrorist)
             {
@@ -196,10 +190,11 @@ public class OnRoundPostStartHelper
             }
         }
 
-        Log.Debug($"#T Players: {string.Join(",", tPlayers.Select(getSteamId))}");
-        Log.Debug($"#CT Players: {string.Join(",", ctPlayers.Select(getSteamId))}");
-
-        var userSettingsByPlayerId = Queries.GetUsersSettings(playerIds);
+        if (Log.IsEnabled(Microsoft.Extensions.Logging.LogLevel.Debug))
+        {
+            Log.Debug($"#T Players: {string.Join(",", tPlayers.Select(getSteamId))}");
+            Log.Debug($"#CT Players: {string.Join(",", ctPlayers.Select(getSteamId))}");
+        }
 
         var defusingPlayer = Utils.Choice(ctPlayers);
 
@@ -414,7 +409,7 @@ public class OnRoundPostStartHelper
                 {
                     giveDefuseKit(player);
                 }
-                else if (getSteamId(defusingPlayer) == getSteamId(player))
+                else if (EqualityComparer<T>.Default.Equals(defusingPlayer, player))
                 {
                     // On pistol rounds, only one person gets a defuse kit
                     giveDefuseKit(player);

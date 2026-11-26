@@ -15,7 +15,7 @@ using WeaponPreferencesType = Dictionary<
     Dictionary<WeaponAllocationType, CsItem>
 >;
 
-public class UserSetting
+public class UserSetting : IWeaponPreferences
 {
     [Key]
     [Required]
@@ -37,9 +37,12 @@ public class UserSetting
             .HaveConversion<WeaponPreferencesConverter, WeaponPreferencesComparer>();
     }
 
-    public bool IsEnemyStuffEnabledForTeam(CsTeam team)
+    public bool IsEnemyStuffEnabledForTeam(CsTeam team) =>
+        IsEnemyStuffEnabledForTeam(EnemyStuffTeamPreference, team);
+
+    internal static bool IsEnemyStuffEnabledForTeam(EnemyStuffTeamPreference preference, CsTeam team)
     {
-        return EnemyStuffTeamPreference switch
+        return preference switch
         {
             EnemyStuffTeamPreference.Terrorist => team == CsTeam.Terrorist,
             EnemyStuffTeamPreference.CounterTerrorist => team == CsTeam.CounterTerrorist,
@@ -52,10 +55,11 @@ public class UserSetting
     public void SetWeaponPreference(CsTeam team, WeaponAllocationType weaponAllocationType, CsItem? weapon)
     {
         // Log.Write($"Setting preference for {UserId} {team} {weaponAllocationType} {weapon}");
-        if (!WeaponPreferences.TryGetValue(team, out var allocationPreference))
+        WeaponPreferences ??= new();
+        if (WeaponPreferences.GetValueOrDefault(team) is not { } allocationPreference)
         {
             allocationPreference = new();
-            WeaponPreferences.Add(team, allocationPreference);
+            WeaponPreferences[team] = allocationPreference;
         }
 
         if (weapon is not null)
@@ -70,7 +74,7 @@ public class UserSetting
 
     public CsItem? GetWeaponPreference(CsTeam team, WeaponAllocationType weaponAllocationType)
     {
-        if (WeaponPreferences.TryGetValue(team, out var allocationPreference))
+        if (WeaponPreferences?.GetValueOrDefault(team) is { } allocationPreference)
         {
             if (allocationPreference.TryGetValue(weaponAllocationType, out var weapon))
             {

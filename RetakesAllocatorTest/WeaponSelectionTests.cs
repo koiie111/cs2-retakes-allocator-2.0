@@ -420,6 +420,7 @@ public class WeaponSelectionTests : BaseTestFixture
             for (var i = 0; i < 10; i++)
             {
                 var allocations = new Dictionary<int, List<CsItem>>();
+                var roundType = RoundTypeManager.Instance.GetNextRoundType();
                 OnRoundPostStartHelper.Handle(
                     players,
                     p => (ulong)p,
@@ -429,7 +430,8 @@ public class WeaponSelectionTests : BaseTestFixture
                     _ => true,
                     _ => true,
                     _ => false,
-                    out var roundType
+                    roundType,
+                    ReadPreferences(players)
                 );
 
                 Assert.That(roundType, Is.EqualTo(RoundType.FullBuy));
@@ -488,6 +490,7 @@ public class WeaponSelectionTests : BaseTestFixture
             for (var i = 0; i < 10; i++)
             {
                 var allocations = new Dictionary<int, List<CsItem>>();
+                var roundType = RoundTypeManager.Instance.GetNextRoundType();
                 OnRoundPostStartHelper.Handle(
                     players,
                     p => (ulong)p,
@@ -497,7 +500,8 @@ public class WeaponSelectionTests : BaseTestFixture
                     _ => true,
                     _ => true,
                     _ => false,
-                    out var roundType
+                    roundType,
+                    ReadPreferences(players)
                 );
 
                 Assert.That(roundType, Is.EqualTo(RoundType.FullBuy));
@@ -562,6 +566,7 @@ public class WeaponSelectionTests : BaseTestFixture
                 RoundTypeManager.Instance.SetNextRoundTypeOverride(RoundType.FullBuy);
 
                 var allocations = new Dictionary<int, List<CsItem>>();
+                var roundType = RoundTypeManager.Instance.GetNextRoundType();
                 OnRoundPostStartHelper.Handle(
                     players,
                     p => (ulong)p,
@@ -571,7 +576,8 @@ public class WeaponSelectionTests : BaseTestFixture
                     _ => true,
                     _ => true,
                     _ => false,
-                    out var roundType
+                    roundType,
+                    ReadPreferences(players)
                 );
 
                 Assert.That(roundType, Is.EqualTo(RoundType.FullBuy));
@@ -644,6 +650,7 @@ public class WeaponSelectionTests : BaseTestFixture
         try
         {
             var allocations = new Dictionary<int, List<CsItem>>();
+            var roundType = RoundTypeManager.Instance.GetNextRoundType();
             OnRoundPostStartHelper.Handle(
                 players,
                 p => (ulong)p,
@@ -653,7 +660,8 @@ public class WeaponSelectionTests : BaseTestFixture
                 _ => true,
                 _ => true,
                 _ => false,
-                out var roundType
+                roundType,
+                ReadPreferences(players)
             );
 
             Assert.That(roundType, Is.EqualTo(RoundType.FullBuy));
@@ -705,6 +713,7 @@ public class WeaponSelectionTests : BaseTestFixture
         var allocations = new Dictionary<int, List<CsItem>>();
         try
         {
+            var roundType = RoundTypeManager.Instance.GetNextRoundType();
             OnRoundPostStartHelper.Handle(
                 players,
                 p => (ulong)p,
@@ -714,7 +723,8 @@ public class WeaponSelectionTests : BaseTestFixture
                 _ => true,
                 _ => true,
                 _ => false,
-                out var roundType
+                roundType,
+                ReadPreferences(players)
             );
 
             return (allocations, roundType);
@@ -746,6 +756,11 @@ public class WeaponSelectionTests : BaseTestFixture
         Assert.That(preference, Is.EqualTo(CsItem.Tec9));
     }
 
+    private static Dictionary<ulong, PreferenceSnapshot> ReadPreferences(IEnumerable<int> players) =>
+        players.Select(player => (ulong)player)
+            .Select(id => (Id: id, Settings: Queries.ReadSnapshot(id)))
+            .Where(entry => entry.Settings is not null)
+            .ToDictionary(entry => entry.Id, entry => entry.Settings!);
 }
 
 

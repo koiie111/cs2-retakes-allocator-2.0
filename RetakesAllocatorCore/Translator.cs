@@ -77,6 +77,39 @@ public class Translator
         return text;
     }
 
+    private static readonly Dictionary<string, string> ColorTags = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    {
+        ["green"] = ChatColors.Green.ToString(),
+        ["red"] = ChatColors.Red.ToString(),
+        ["yellow"] = ChatColors.Yellow.ToString(),
+        ["blue"] = ChatColors.Blue.ToString(),
+        ["purple"] = ChatColors.Purple.ToString(),
+        ["orange"] = ChatColors.Orange.ToString(),
+        ["white"] = ChatColors.White.ToString(),
+        ["normal"] = ChatColors.White.ToString(),
+        ["grey"] = ChatColors.Grey.ToString(),
+        ["gray"] = ChatColors.Grey.ToString(),
+        ["lightred"] = ChatColors.LightRed.ToString(),
+        ["light_red"] = ChatColors.LightRed.ToString(),
+        ["lightblue"] = ChatColors.LightBlue.ToString(),
+        ["light_blue"] = ChatColors.LightBlue.ToString(),
+        ["lightpurple"] = ChatColors.LightPurple.ToString(),
+        ["light_purple"] = ChatColors.LightPurple.ToString(),
+        ["lightyellow"] = ChatColors.LightYellow.ToString(),
+        ["light_yellow"] = ChatColors.LightYellow.ToString(),
+        ["darkred"] = ChatColors.DarkRed.ToString(),
+        ["dark_red"] = ChatColors.DarkRed.ToString(),
+        ["darkblue"] = ChatColors.DarkBlue.ToString(),
+        ["dark_blue"] = ChatColors.DarkBlue.ToString(),
+        ["bluegrey"] = ChatColors.BlueGrey.ToString(),
+        ["blue_grey"] = ChatColors.BlueGrey.ToString(),
+        ["olive"] = ChatColors.Olive.ToString(),
+        ["lime"] = ChatColors.Lime.ToString(),
+        ["gold"] = ChatColors.Gold.ToString(),
+        ["silver"] = ChatColors.Silver.ToString(),
+        ["magenta"] = ChatColors.Magenta.ToString(),
+    };
+
     public static string Color(string text)
     {
         text = text
@@ -85,40 +118,7 @@ public class Translator
             .Replace("{teamcolor}T", $"{ChatColors.Orange}T", StringComparison.OrdinalIgnoreCase)
             .Replace("{teamcolors}T", $"{ChatColors.Orange}T", StringComparison.OrdinalIgnoreCase);
 
-        var colorTags = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["green"] = ChatColors.Green.ToString(),
-            ["red"] = ChatColors.Red.ToString(),
-            ["yellow"] = ChatColors.Yellow.ToString(),
-            ["blue"] = ChatColors.Blue.ToString(),
-            ["purple"] = ChatColors.Purple.ToString(),
-            ["orange"] = ChatColors.Orange.ToString(),
-            ["white"] = ChatColors.White.ToString(),
-            ["normal"] = ChatColors.White.ToString(),
-            ["grey"] = ChatColors.Grey.ToString(),
-            ["gray"] = ChatColors.Grey.ToString(),
-            ["lightred"] = ChatColors.LightRed.ToString(),
-            ["light_red"] = ChatColors.LightRed.ToString(),
-            ["lightblue"] = ChatColors.LightBlue.ToString(),
-            ["light_blue"] = ChatColors.LightBlue.ToString(),
-            ["lightpurple"] = ChatColors.LightPurple.ToString(),
-            ["light_purple"] = ChatColors.LightPurple.ToString(),
-            ["lightyellow"] = ChatColors.LightYellow.ToString(),
-            ["light_yellow"] = ChatColors.LightYellow.ToString(),
-            ["darkred"] = ChatColors.DarkRed.ToString(),
-            ["dark_red"] = ChatColors.DarkRed.ToString(),
-            ["darkblue"] = ChatColors.DarkBlue.ToString(),
-            ["dark_blue"] = ChatColors.DarkBlue.ToString(),
-            ["bluegrey"] = ChatColors.BlueGrey.ToString(),
-            ["blue_grey"] = ChatColors.BlueGrey.ToString(),
-            ["olive"] = ChatColors.Olive.ToString(),
-            ["lime"] = ChatColors.Lime.ToString(),
-            ["gold"] = ChatColors.Gold.ToString(),
-            ["silver"] = ChatColors.Silver.ToString(),
-            ["magenta"] = ChatColors.Magenta.ToString(),
-        };
-
-        foreach (var (tag, color) in colorTags)
+        foreach (var (tag, color) in ColorTags)
         {
             text = text
                 .Replace($"{{{tag}}}", color, StringComparison.OrdinalIgnoreCase)

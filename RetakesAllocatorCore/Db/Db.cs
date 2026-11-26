@@ -10,6 +10,11 @@ public class Db : DbContext
     public DbSet<UserSetting> UserSettings { get; set; }
 
     private static Db? Instance { get; set; }
+    private readonly ConfigData? _config;
+
+    public Db() { }
+
+    internal Db(ConfigData config) => _config = config;
 
     public static Db GetInstance()
     {
@@ -29,7 +34,7 @@ public class Db : DbContext
 
         // TODO This whole thing needs to be fixed per
         // https://jasonwatmore.com/post/2020/01/03/aspnet-core-ef-core-migrations-for-multiple-databases-sqlite-and-sql-server
-        var configData = Configs.IsLoaded() ? Configs.GetConfigData() : new ConfigData();
+        var configData = _config ?? (Configs.IsLoaded() ? Configs.GetConfigData() : new ConfigData());
         var databaseConnectionString = configData.DatabaseConnectionString;
         switch (configData.DatabaseProvider)
         {
