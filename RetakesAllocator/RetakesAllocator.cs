@@ -218,7 +218,8 @@ public class RetakesAllocator : BasePlugin
         {
             _roundGeneration++;
             IsAllocatingForRound = false;
-            _allocatedPlayerItems.Clear();
+            foreach (var allocations in _allocatedPlayerItems.Values)
+                allocations.Clear();
             PrefetchPlayers();
             _hud?.RoundBoundary();
             return HookResult.Continue;
@@ -995,16 +996,25 @@ public class RetakesAllocator : BasePlugin
         OnRoundPostStartHelper.Handle(participants, player => player?.SteamId ?? 0, player => player.Team,
             player =>
             {
-                if (IsCurrent(player))
-                    GiveDefuseKit(player.Player);
+                if (!IsCurrent(player))
+                    return;
+                try { GiveDefuseKit(player.Player); }
+                catch (Exception error) { Logger.LogError(error, "Could not give a Retakes defuse kit"); }
             },
             (player, items, slot) =>
             {
                 if (!IsCurrent(player))
                     return;
-                GiveItems(player.Player, items);
-                if (slot is not null)
-                    slots.Add((player, slot));
+                try
+                {
+                    GiveItems(player.Player, items);
+                    if (slot is not null)
+                        slots.Add((player, slot));
+                }
+                catch (Exception error)
+                {
+                    Logger.LogError(error, "Could not give Retakes round equipment");
+                }
             },
             player => player.Awp, player => player.Ssg, player => player.EnemyStuff, roundType, snapshots);
         if (slots.Count == 0)
