@@ -1,6 +1,6 @@
 # RETAKE #17 in Panorama
 
-`retake17_menu` contains the welcome screen and the interactive grid. `retake17_toast` displays the bombsite, the team goal and the current queue position. The toast never captures player input. The local HTML review remains in `docs/retake-17-preview`.
+`retake17_menu` contains the welcome screen and the interactive grid. `retake17_toast` displays the bombsite, the team goal and the current queue position. The toast never captures player input. The [design reference](../docs/retake-17-design.md) records the approved visual rules. The interactive HTML prototype is in `docs/retake-17-preview`.
 
 ## Build and test
 

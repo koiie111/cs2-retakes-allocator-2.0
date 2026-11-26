@@ -1,65 +1,113 @@
 /* Retake #17 uses fixed panels and per-player text and classes. */
 .Outer { width: 100%; height: 100%; z-index: 99999; }
-Label { color: #f3f5f2; font-family: Arial; font-size: 21px; white-space: nowrap; text-overflow: ellipsis; }
+Label { color: #f3f6f5; font-family: Arial; font-size: 21px; white-space: nowrap; text-overflow: ellipsis; }
 .Off { visibility: collapse; }
-.Menu { width: 100%; height: 100%; background-color: #0d12138f; visibility: collapse; }
+.Menu { width: 100%; height: 100%; background-color: #0d12135e; visibility: collapse; }
 .Menu.Show, .Toast.Show { visibility: visible; }
-.Card { horizontal-align: center; vertical-align: center; width: 819px; padding: 28px; background-color: #191f20; border: 1px solid #46504a; border-top: 3px solid #b7d564; border-radius: 13px; box-shadow: #00000099 0px 18px 45px 0px; }
-.Intro, .Body { width: 761px; flow-children: down; }
-.Intro, .Body { visibility: collapse; }
+.Card { horizontal-align: center; vertical-align: center; width: 718px; padding: 29px; border: 1px solid #48524e; border-radius: 18px; background-color: #191e20; box-shadow: #080b0cb0 0px 18px 51px 0px; }
+.Intro, .Body { width: 658px; flow-children: down; visibility: collapse; }
 .Intro.Visible, .Body.Visible { visibility: visible; }
+
+.Kicker { color: #cfe98e; font-size: 15px; font-weight: bold; letter-spacing: 2px; }
+.Heading { width: 100%; margin-bottom: 20px; }
+.Title { width: 608px; margin-top: 2px; font-size: 41px; font-weight: bold; text-overflow: shrink min( 27px ) ellipsis; }
+.Muted { color: #bbcac7; font-size: 18px; vertical-align: center; }
+
+.Close { width: 42px; height: 42px; horizontal-align: right; vertical-align: top; z-index: 1; border: 1px solid #3e4848; border-radius: 9px; background-color: #191e20; }
+.Cross { width: 18px; height: 2px; horizontal-align: center; vertical-align: center; background-color: #cfd8d5; border-radius: 1px; }
+.Slash { transform: rotateZ(45deg); }
+.Backslash { transform: rotateZ(-45deg); }
+
 .IntroRow, .RoleRow, .Role, .Footer, .Caption, .GridRow { flow-children: right; }
-.IntroRow { margin-top: 9px; }
-.IntroCopy { width: 378px; flow-children: down; vertical-align: center; }
-.Kicker { color: #dcfa7b; font-size: 18px; font-weight: bold; letter-spacing: 3px; }
-.Headline { font-size: 45px; font-weight: bold; white-space: normal; }
-.Title { width: 716px; margin-top: 6px; font-size: 43px; font-weight: bold; }
-.Muted { color: #b8c4bf; font-size: 20px; vertical-align: center; }
-.Hero { width: 381px; height: 188px; border-radius: 8px; background-image: url("s2r://materials/retake17/mirage.vtex"); background-size: 381px 188px; background-position: center; }
-.Agent { width: 156px; height: 190px; vertical-align: bottom; background-size: 100% 100%; background-position: center bottom; background-repeat: no-repeat; }
+.IntroRow { margin-top: 30px; }
+.IntroCopy { width: 300px; flow-children: down; vertical-align: center; }
+.Headline { font-size: 41px; font-weight: bold; white-space: normal; }
+.IntroCopy .Muted { margin-top: 7px; }
+.Hero { width: 358px; height: 172px; border-radius: 12px; background-image: url("s2r://materials/retake17/mirage.vtex"); background-size: 358px 177px; background-position: center; }
+.Agent { width: 141px; height: 172px; vertical-align: bottom; background-size: 100% 100%; background-position: center bottom; background-repeat: no-repeat; }
 .AgentCt { margin-left: 6px; background-image: url("s2r://materials/retake17/ct.vtex"); }
 .AgentT { horizontal-align: right; margin-right: 6px; background-image: url("s2r://materials/retake17/t.vtex"); }
-.MapName { vertical-align: bottom; horizontal-align: center; margin-bottom: 8px; padding: 5px 8px; border-radius: 4px; background-color: #191f20eb; font-size: 14px; font-weight: bold; }
-.RoleRow { margin-top: 18px; }
-.Role { width: 375px; height: 82px; padding: 13px; border: 1px solid #3e5058; border-radius: 8px; background-color: #25333a; }
-.Attacker { margin-left: 10px; border-color: #5c4939; background-color: #392d24; }
-.RoleCopy { flow-children: down; vertical-align: center; }
+.MapName { vertical-align: bottom; horizontal-align: center; margin-bottom: 8px; padding: 5px 8px; border-radius: 4px; background-color: #191e20eb; font-size: 14px; font-weight: bold; }
+.RoleRow { margin-top: 16px; }
+.Role { width: 323px; height: 74px; padding: 11px; border: 1px solid #3e5058; border-radius: 12px; background-color: #25333a; }
+.Attacker { margin-left: 12px; border-color: #5c4939; background-color: #392d24; }
+.RoleCopy { width: 247px; flow-children: down; vertical-align: center; }
 .RoleName { font-size: 16px; font-weight: bold; }
 .Blue { color: #9ed6ff; }
 .Orange { color: #ffbf88; }
-.Goal { font-size: 21px; font-weight: bold; }
-.RoleIcon, .TeamLogo { background-size: 100% 100%; background-repeat: no-repeat; background-position: center; }
-.RoleIcon { width: 35px; height: 35px; vertical-align: center; margin-right: 13px; }
+.Goal { font-size: 19px; font-weight: bold; text-overflow: shrink min( 15px ) ellipsis; }
+.RoleIcon, .TeamLogo, .TeamBadge { background-size: 100% 100%; background-repeat: no-repeat; background-position: center; }
+.RoleIcon { width: 34px; height: 34px; vertical-align: center; margin-right: 11px; }
 .TeamLogo { width: 28px; height: 28px; vertical-align: center; margin-right: 9px; }
 .CtIcon { background-image: url("s2r://panorama/images/icons/ct_logo.vsvg"); }
 .TIcon { background-image: url("s2r://panorama/images/icons/t_logo.vsvg"); }
-.Caption { height: 34px; margin-bottom: 6px; }
-.Close { width: 40px; height: 40px; horizontal-align: right; vertical-align: top; ignore-parent-flow: true; z-index: 1; border: 1px solid #414948; border-radius: 8px; background-color: #191f20; }
-.Cross { width: 18px; height: 3px; horizontal-align: center; vertical-align: center; background-color: #f3f5f2; border-radius: 1px; }
-.Slash { transform: rotateZ(45deg); }
-.Backslash { transform: rotateZ(-45deg); }
-.GridRow { width: 761px; }
-.Item { width: 375px; height: 103px; margin: 0px 10px 9px 0px; padding: 8px 13px; flow-children: down; border: 1px solid #343b3b; border-radius: 8px; background-color: #252c2d; }
-.Item:last-child { margin-right: 0px; }
-.Item.Selected { background-color: #36462d; border-color: #a3c46a; }
-.ItemIcon { width: 111px; height: 37px; background-position: left center; background-repeat: no-repeat; background-size: 100% 100%; }
-.ItemIcon.Small { width: 34px; }
-.ItemName { width: 100%; font-size: 21px; font-weight: bold; }
-.ItemDetail { width: 100%; font-size: 16px; color: #b3c0ba; }
-.ItemIcon.Off, .ItemDetail.Off, .Item.Off, .Action.Off, .TeamLogo.Off, .Status.Off { visibility: collapse; }
-.Status { color: #dcfa7b; font-size: 19px; margin-top: 3px; }
-.Footer { width: 761px; margin-top: 16px; }
-.Action { height: 45px; margin-right: 10px; padding: 0px 15px; border: 1px solid #343b3b; border-radius: 8px; background-color: #252c2d; }
+.Caption { height: 28px; margin-top: -10px; margin-bottom: 12px; }
+
+.TeamPicker { flow-children: right; horizontal-align: right; vertical-align: bottom; margin-right: 57px; padding: 4px; border: 1px solid #353f40; border-radius: 10px; background-color: #202628; visibility: collapse; }
+.TeamPicker.Visible { visibility: visible; }
+.TeamOption { flow-children: right; height: 33px; padding: 0px 8px; border-radius: 7px; }
+.DefendOption { margin-left: 4px; }
+.TeamOption Label { color: #c9d2d0; font-size: 18px; font-weight: bold; vertical-align: center; }
+.TeamBadge { width: 22px; height: 22px; margin-right: 6px; vertical-align: center; }
+.TeamOption:hover { background-color: #30393a; }
+.AttackOption.Active { background-color: #3b3427; }
+.AttackOption.Active Label { color: #f4d494; }
+.DefendOption.Active { background-color: #283945; }
+.DefendOption.Active Label { color: #a8d8fa; }
+
+.GridRow, .Footer { width: 658px; }
+.Item { width: 323px; height: 87px; margin: 0px 12px 12px 0px; padding: 14px; border: 1px solid #373f40; border-radius: 12px; background-color: #242b2d; }
+.Item:last-child, .Item.Wide { margin-right: 0px; }
+.Item.Wide { width: 658px; }
+.Item.Strip { height: 66px; padding: 10px 14px; }
+.Item.Featured { border-color: #4b6040; background-color: #2a352b; }
+.Item.Selected { border-color: #92aa69; background-color: #334131; }
+.Item:hover { border-color: #8da47c; }
+
+.ItemIconWell { width: 45px; height: 45px; vertical-align: center; border-radius: 9px; background-color: #30393a; }
+.ItemIcon { width: 100%; height: 100%; background-position: center; background-repeat: no-repeat; background-size: 33px 33px; }
+.Item:not(.WeaponSlot) .ItemIcon { width: 24px; height: 24px; horizontal-align: center; vertical-align: center; background-size: 24px 24px; wash-color: #dde3df; }
+.Item:not(.WeaponSlot) .i-awp, .Item:not(.WeaponSlot) .i-ssg08 { background-size: 24px 8px; }
+.Item.Featured .ItemIconWell { background-color: #3b4b33; }
+.Item.Featured .ItemIcon { wash-color: #d8ee9d; }
+.Arrow { width: 8px; height: 8px; margin-right: 6px; border-right: 2px solid #9ba9a6; border-bottom: 2px solid #9ba9a6; horizontal-align: right; vertical-align: center; transform: rotateZ(-45deg); }
+
+.ItemCopy { width: 208px; height: 52px; margin-left: 60px; vertical-align: center; }
+.Item.Wide .ItemCopy { width: 546px; }
+.ItemName { width: 100%; height: 27px; vertical-align: center; font-size: 21px; font-weight: bold; text-overflow: shrink min( 17px ) ellipsis; }
+.ItemDetail { width: 100%; height: 23px; vertical-align: bottom; font-size: 17px; color: #bbcac7; }
+.Item.HasDetail .ItemName { vertical-align: top; }
+.Item.Strip .ItemIconWell { width: 36px; height: 36px; }
+.Item.Strip .ItemCopy { margin-left: 50px; }
+
+.Item.WeaponSlot { height: 93px; }
+.Item.WeaponSlot .ItemIconWell { width: 101px; horizontal-align: right; background-color: #00000000; }
+.Item.WeaponSlot .ItemCopy { width: 188px; margin-left: 0px; }
+.Item.WeaponSlot.Wide .ItemCopy { width: 525px; }
+.Item.WeaponSlot .Arrow { visibility: collapse; }
+.Item.SlotOrder .ItemDetail { vertical-align: top; }
+.Item.SlotOrder .ItemName { vertical-align: bottom; }
+
+.Status { color: #dcf8a0; font-size: 19px; margin-top: 3px; }
+.Footer { height: 70px; margin-top: 9px; padding-top: 17px; border-top: 1px solid #30383a; }
+.FooterSpacer { width: fill-parent-flow(1); height: 1px; }
+.Action { height: 51px; margin-right: 8px; padding: 0px 14px; border: 1px solid #373f40; border-radius: 9px; background-color: #242b2d; }
 .Action Label { vertical-align: center; horizontal-align: center; font-size: 19px; font-weight: bold; }
-.Action.Primary { background-color: #dcfa7b; border-color: #d7f878; }
-.Action.Primary Label { color: #182313; }
-.Check { flow-children: right; margin-left: 25px; }
+.Action:hover, .Close:hover { border-color: #8da47c; }
+.Action.Primary { margin-right: 0px; padding: 0px 19px; background-color: #dcf8a0; border-color: #dcf8a0; }
+.Action.Primary Label { color: #222d1a; }
+.Action.Primary:hover { background-color: #edffc4; }
+#play { width: 102px; }
+#back { padding-left: 3px; border-color: #00000000; background-color: #00000000; }
+#back:hover { background-color: #30393a; }
+.Check { flow-children: right; }
 .Checkbox { width: 18px; height: 18px; vertical-align: center; margin-right: 9px; border: 1px solid #a6afab; border-radius: 3px; }
-.Checked .Checkbox { background-color: #dcfa7b; border-color: #dcfa7b; }
+.Checked .Checkbox { background-color: #dcf8a0; border-color: #dcf8a0; }
+
 .Toast { horizontal-align: center; vertical-align: top; margin-top: 118px; height: 47px; padding: 6px 14px 6px 6px; flow-children: right; visibility: collapse; background-color: #171e1af5; border: 1px solid #56634f; border-radius: 7px; }
 .Badge { min-width: 31px; height: 33px; margin-right: 10px; padding: 3px 7px; text-align: center; vertical-align: center; border-radius: 4px; background-color: #dcfa7b; color: #182313; font-weight: bold; font-size: 21px; }
 .ToastMessage { vertical-align: center; font-weight: bold; font-size: 20px; }
-.Item:hover, .Action:hover, .Close:hover { border-color: #a3c46a; }
+
 .i-default { background-image: url("s2r://panorama/images/icons/ui/loadout.vsvg"); }
 .i-random { background-image: url("s2r://panorama/images/icons/ui/random.vsvg"); }
 .i-none { background-image: url("s2r://panorama/images/icons/ui/cancel.vsvg"); }
@@ -99,3 +147,26 @@ Label { color: #f3f5f2; font-family: Arial; font-size: 21px; white-space: nowrap
 .i-ump45 { background-image: url("s2r://panorama/images/icons/equipment/ump45.vsvg"); background-size: 94px 36px; }
 .i-usp_silencer { background-image: url("s2r://panorama/images/icons/equipment/usp_silencer.vsvg"); background-size: 78px 36px; }
 .i-xm1014 { background-image: url("s2r://panorama/images/icons/equipment/xm1014.vsvg"); background-size: 105px 34px; }
+
+/* Navigation and admin actions use base-game Panorama icons. */
+.i-help { background-image: url("s2r://panorama/images/icons/ui/info.vsvg"); }
+.i-commands { background-image: url("s2r://panorama/images/icons/ui/message.vsvg"); }
+.i-admin { background-image: url("s2r://panorama/images/icons/ui/shield.vsvg"); }
+.i-options { background-image: url("s2r://panorama/images/icons/ui/settings_sliders.vsvg"); }
+.i-search { background-image: url("s2r://panorama/images/icons/ui/search.vsvg"); }
+.i-vote { background-image: url("s2r://panorama/images/icons/ui/vote_check.vsvg"); }
+.i-switch { background-image: url("s2r://panorama/images/icons/ui/voteteamswitch.vsvg"); }
+.i-team-t { background-image: url("s2r://panorama/images/icons/t_logo.vsvg"); }
+.i-team-ct { background-image: url("s2r://panorama/images/icons/ct_logo.vsvg"); }
+.i-teams { background-image: url("s2r://panorama/images/icons/ui/competitive_teams.vsvg"); }
+.i-site { background-image: url("s2r://panorama/images/icons/ui/pin.vsvg"); }
+.i-site-a { background-image: url("s2r://panorama/images/icons/ui/map_bombzone_a.vsvg"); }
+.i-site-b { background-image: url("s2r://panorama/images/icons/ui/map_bombzone_b.vsvg"); }
+.i-clock { background-image: url("s2r://panorama/images/icons/ui/clock.vsvg"); }
+.i-settings { background-image: url("s2r://panorama/images/icons/ui/settings.vsvg"); }
+.i-maps { background-image: url("s2r://panorama/images/icons/ui/news.vsvg"); }
+.i-spawn { background-image: url("s2r://panorama/images/icons/ui/edit.vsvg"); }
+.i-queue { background-image: url("s2r://panorama/images/icons/ui/group_queue.vsvg"); }
+.i-refresh { background-image: url("s2r://panorama/images/icons/ui/refresh.vsvg"); }
+.i-remove { background-image: url("s2r://panorama/images/icons/ui/trash.vsvg"); }
+.i-done { background-image: url("s2r://panorama/images/icons/ui/check.vsvg"); }
