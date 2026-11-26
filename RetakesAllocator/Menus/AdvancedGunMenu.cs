@@ -109,6 +109,12 @@ public class AdvancedGunMenu
             return;
         }
 
+        if (!Configs.GetConfigData().GunCommandsEnabled)
+        {
+            player.PrintToChat(Translator.Instance["command.gun_disabled"]);
+            return;
+        }
+
         if (!Configs.GetConfigData().CanPlayersSelectWeapons())
         {
             Helpers.WriteNewlineDelimited(Translator.Instance["weapon_preference.cannot_choose"], player.PrintToChat);
@@ -130,16 +136,13 @@ public class AdvancedGunMenu
         }
 
         var data = await BuildMenuDataAsync(team, steamId);
-        if (data == null)
-        {
-            Helpers.WriteNewlineDelimited(Translator.Instance["weapon_preference.not_saved"], player.PrintToChat);
-            return;
-        }
-
         Server.NextFrame(() =>
         {
-            if (!Helpers.PlayerIsValid(player))
+            if (!Helpers.PlayerIsValid(player) || Helpers.GetSteamId(player) != steamId || player.Team != team)
+                return;
+            if (data is null)
             {
+                Helpers.WriteNewlineDelimited(Translator.Instance["weapon_preference.not_saved"], player.PrintToChat);
                 return;
             }
 
@@ -214,7 +217,13 @@ public class AdvancedGunMenu
 
         CloseTrackedMenu(player);
 
-        var menu = GetMenuApi().CreateMenu(player);
+        if (!UniversalMenu.Drivers.TryGetValue(SharpModMenuDriverName, out var driver))
+        {
+            player.PrintToChat(Translator.Instance["guns_menu.no_driver"]);
+            return;
+        }
+
+        var menu = driver.CreateMenu(player);
         menu.Title = menuTitle;
         _openMenus[player.SteamID] = menu;
 
@@ -312,16 +321,6 @@ public class AdvancedGunMenu
                 choice => choice.Equals(zeusChoices[0], StringComparison.Ordinal));
         }
         menu.Display();
-    }
-
-    private static IMenuAPI GetMenuApi()
-    {
-        if (UniversalMenu.Drivers.TryGetValue(SharpModMenuDriverName, out var sharpModMenu))
-        {
-            return sharpModMenu;
-        }
-
-        throw new InvalidOperationException("SharpModMenu CSSUniversalMenuAPI driver is not loaded. Install SharpModMenu.");
     }
 
     private void AddCyclingChoiceMenuItem(

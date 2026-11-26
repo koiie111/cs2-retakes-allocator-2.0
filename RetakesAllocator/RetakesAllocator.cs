@@ -73,6 +73,8 @@ public class RetakesAllocator : BasePlugin
         Capabilities.RegisterPluginCapability(new PluginCapability<Func<CCSPlayerController, bool>>("retakes_allocator:round_toast"),
             () => player => _hud?.HasRoundToast(player) == true);
         RegisterListener<Listeners.OnCustomHudClicked>(_hud.Click);
+        // A jointeam request may enter the queue without producing a player_team event.
+        AddTimer(2, _hud.RefreshQueue, TimerFlags.REPEAT);
         RegisterListener<Listeners.OnMapEnd>(() => _hud?.Reset());
         RegisterEventHandler<EventPlayerConnectFull>((ev, _) =>
         {
@@ -239,7 +241,8 @@ public class RetakesAllocator : BasePlugin
         ResetState(loadConfig: false);
         Queries.Disconnect();
 
-        GetRetakesPluginEventSender().RetakesPluginEventHandlers -= RetakesEventHandler;
+        if (RetakesPluginEventSender is { } sender)
+            sender.RetakesPluginEventHandlers -= RetakesEventHandler;
 
         if (Configs.GetConfigData().EnableCanAcquireHook && CustomFunctions != null)
         {
@@ -1018,7 +1021,7 @@ public class RetakesAllocator : BasePlugin
                 _bombsite == "B" ? Translator.Instance["BombSite.B"] : "";
             foreach (var player in playerEntities)
             {
-                if (!player.IsValid || !player.PawnIsAlive || player.IsBot || player.IsHLTV) continue;
+                if (!player.IsValid || !player.PawnIsAlive || player.IsBot || player.IsHLTV || _hud?.HasRoundToast(player) == true) continue;
 
                 if (player.TeamNum == (byte) CsTeam.Terrorist &&
                     !Configs.GetConfigData().BombSiteAnnouncementCenterToCTOnly)

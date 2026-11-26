@@ -50,6 +50,16 @@ public class WeaponSelectionTests : BaseTestFixture
     }
 
     [Test]
+    public void ExplicitRandomWithNoAllowedPistolsGivesNoWeapon()
+    {
+        var settings = new UserSetting();
+        settings.SetWeaponPreference(CsTeam.Terrorist, WeaponAllocationType.PistolRound, WeaponHelpers.RandomLoadoutPreference);
+        Configs.GetConfigData().UsableWeapons = [CsItem.AK47];
+        var selection = WeaponHelpers.GetWeaponsForRoundType(RoundType.Pistol, CsTeam.Terrorist, settings, givePreferred: false);
+        Assert.That(selection.Weapons, Is.Empty);
+    }
+
+    [Test]
     public async Task SetWeaponPreferenceDirectly()
     {
         Assert.That(

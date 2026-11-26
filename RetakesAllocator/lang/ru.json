@@ -59,6 +59,7 @@
   "guns_menu.title": "<font color='#EFCE21'>Снаряжение · {0}</font>",
   "guns_menu.choice_format": "<font color='#FFFFFF'>{0}</font>: <font color='#FFFFFF'>[</font><font color='#2FFF00'>{1}</font><font color='#FFFFFF'>]</font>",
   "guns_menu.choice_disabled_format": "<font color='#FFFFFF'>{0}</font>: <font color='#FFFFFF'>[</font><font color='#FF0000'>{1}</font><font color='#FFFFFF'>]</font>",
+  "guns_menu.no_driver": "Меню снаряжения недоступно. Используйте !gun <оружие>.",
   "guns_menu.unavailable": "Недоступно",
   "guns_menu.sniper_label": "Снайперская винтовка",
   "guns_menu.sniper_awp": "AWP",

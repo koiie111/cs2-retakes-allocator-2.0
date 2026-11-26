@@ -365,6 +365,8 @@ public static class WeaponHelpers
 
     private static readonly Dictionary<CsItem, string> _weaponNameOverrides = new()
     {
+        {DefaultLoadoutPreference, "По умолчанию"},
+        {RandomLoadoutPreference, "Случайно"},
         {CsItem.M4A4, "M4A4"},
         {CsItem.Tec9, "TEC9"},
     };
@@ -895,11 +897,11 @@ public static class WeaponHelpers
         return IsUsableWeapon(defaultWeapon.Value) ? defaultWeapon : null;
     }
 
-    private static CsItem GetRandomWeaponForAllocationType(WeaponAllocationType allocationType, CsTeam team)
+    private static CsItem? GetRandomWeaponForAllocationType(WeaponAllocationType allocationType, CsTeam team)
     {
         if (team != CsTeam.Terrorist && team != CsTeam.CounterTerrorist)
         {
-            return CsItem.Deagle;
+            return null;
         }
 
         var availableWeapons = GetAvailableWeaponsForTeamAndAllocationType(allocationType, team)
@@ -908,7 +910,7 @@ public static class WeaponHelpers
 
         if (availableWeapons.Count == 0)
         {
-            return CsItem.Deagle;
+            return null;
         }
 
         return Utils.Choice(availableWeapons);
@@ -934,7 +936,7 @@ public static class WeaponHelpers
             {
                 useDefault = true;
             }
-            if (allocationType != WeaponAllocationType.Preferred && weaponPreference == RandomLoadoutPreference && config.CanAssignRandomWeapons())
+            else if (allocationType != WeaponAllocationType.Preferred && weaponPreference == RandomLoadoutPreference && config.CanAssignRandomWeapons())
             {
                 weapon = GetRandomWeaponForAllocationType(allocationType, team);
             }
@@ -1041,6 +1043,9 @@ public static class WeaponHelpers
                 ref enemyStuffGranted
             )
             ?? GetRandomWeaponForAllocationType(allocationType, enemyTeam);
+
+        if (enemyWeapon is null)
+            return weapon;
 
         if (!enemyWeapon.Equals(weapon))
         {

@@ -423,4 +423,3 @@ document.addEventListener("keydown", event => {
 });
 
 setScenario("join");
-

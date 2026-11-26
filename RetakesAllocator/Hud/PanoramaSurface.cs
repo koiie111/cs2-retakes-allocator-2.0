@@ -92,4 +92,3 @@ internal sealed class PanoramaSurface(string layoutName)
         }
     }
 }
-

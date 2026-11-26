@@ -35,10 +35,17 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
     private static readonly PluginCapability<ISettingsApi> PlayerSettings = new("settings:nfcore");
 #endif
 
+    // CSS 1.0.380 indexes its provider dictionary even for optional plugins.
+    private static T? Optional<T>(PluginCapability<T> capability) where T : class
+    {
+        try { return capability.Get(); }
+        catch (KeyNotFoundException) { return null; }
+    }
+
     private static (bool Available, bool Skip) ReadWelcomePreference(CCSPlayerController player)
     {
 #if RETAKE_PLAYER_SETTINGS
-        var settings = PlayerSettings.Get();
+        var settings = Optional(PlayerSettings);
         return (settings is not null, settings?.GetPlayerSettingsValue(player, WelcomeSetting, "0") == "1");
 #else
         return (false, false);
@@ -48,7 +55,7 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
     private static void WriteWelcomePreference(CCSPlayerController player, bool skip)
     {
 #if RETAKE_PLAYER_SETTINGS
-        PlayerSettings.Get()?.SetPlayerSettingsValue(player, WelcomeSetting, skip ? "1" : "0");
+        Optional(PlayerSettings)?.SetPlayerSettingsValue(player, WelcomeSetting, skip ? "1" : "0");
 #endif
     }
     private static readonly PluginCapability<Func<CCSPlayerController, (int Position, int Playing, int Waiting)>> Queue
@@ -97,12 +104,14 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
         internal CsTeam Team { get; set; }
         internal UserSetting? Preferences { get; set; }
         internal ulong PreferenceId { get; set; }
+        internal Task PreferenceWork { get; set; } = Task.CompletedTask;
         internal Timer? CloseTimer { get; set; }
         internal Timer? MenuTimer { get; set; }
         internal bool RoundToast { get; set; }
+        internal bool ClientHasHud { get; set; }
     }
 
-    private bool Enabled => _active && Configs.GetConfigData().EnablePanoramaHud && RetakesEnabled.Get()?.Invoke() == true;
+    private bool Enabled => _active && Configs.GetConfigData().EnablePanoramaHud && Optional(RetakesEnabled)?.Invoke() == true;
 
     private static bool Human(CCSPlayerController? player) =>
         player is { IsValid: true, IsBot: false, IsHLTV: false, SteamID: > 0 };
@@ -380,7 +389,7 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
         if (!config.GunCommandsEnabled || !config.CanPlayersSelectWeapons() || !allowed)
             return;
 
-        Save(state, () => Queries.SetWeaponPreferenceForUserAsync(state.PreferenceId, team, slot, weapon), () =>
+        Save(state, steamId => Queries.SetWeaponPreferenceForUserAsync(steamId, team, slot, weapon), () =>
         {
             state.Preferences!.SetWeaponPreference(team, slot, weapon);
             ShowChoices(state, slot, title);
@@ -422,7 +431,7 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
         if (weapon is { } value && !CanUseSniper(state.Player, value))
             return;
 
-        Save(state, () => Queries.SetAwpWeaponPreferenceAsync(state.PreferenceId, weapon), () =>
+        Save(state, steamId => Queries.SetAwpWeaponPreferenceAsync(steamId, weapon), () =>
         {
             state.Preferences!.SetWeaponPreference(CsTeam.Terrorist, WeaponAllocationType.Preferred, weapon);
             state.Preferences.SetWeaponPreference(CsTeam.CounterTerrorist, WeaponAllocationType.Preferred, weapon);
@@ -450,7 +459,7 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
         if (!Helpers.HasEnemyStuffPermission(state.Player))
             return;
 
-        Save(state, () => Queries.SetEnemyStuffPreferenceAsync(state.PreferenceId, preference), () =>
+        Save(state, steamId => Queries.SetEnemyStuffPreferenceAsync(steamId, preference), () =>
         {
             state.Preferences!.EnemyStuffTeamPreference = preference;
             ShowEnemy(state);
@@ -463,21 +472,22 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
             return;
 
         var enabled = state.Preferences?.ZeusEnabled != true;
-        Save(state, () => Queries.SetZeusPreferenceAsync(state.PreferenceId, enabled), () =>
+        Save(state, steamId => Queries.SetZeusPreferenceAsync(steamId, enabled), () =>
         {
             state.Preferences!.ZeusEnabled = enabled;
             ShowExtra(state);
         });
     }
 
-    private void Save(PlayerState state, Func<Task> write, Action saved)
+    private void Save(PlayerState state, Func<ulong, Task> write, Action saved)
     {
         if (state.Busy || state.PreferenceId == 0 || state.PreferenceId != Helpers.GetSteamId(state.Player))
             return;
 
+        var steamId = state.PreferenceId;
         state.Busy = true;
         Status(state, "Сохраняем…");
-        Run(state, state.Revision, async () => { await write(); return true; }, _ =>
+        Run(state, state.Revision, async () => { await write(steamId); return true; }, _ =>
         {
             var keepOffset = state.Offset;
             state.Busy = false;
@@ -491,10 +501,13 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
 
     private void Run<T>(PlayerState state, int revision, Func<Task<T>> task, Action<T> complete)
     {
-        _ = Task.Run(async () =>
+        // Closing and reopening the menu can start a read while a save is still queued.
+        var previous = state.PreferenceWork;
+        state.PreferenceWork = Task.Run(async () =>
         {
             try
             {
+                await previous;
                 var result = await task();
                 Server.NextFrame(() =>
                 {
@@ -557,16 +570,20 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
 
     private static bool Allowed(CCSPlayerController player, string command) =>
         command == "css_setnextround" ? AdminManager.PlayerHasPermissions(player, "@css/root") :
-            CommandAllowed.Get()?.Invoke(player, command) == true;
+            Optional(CommandAllowed)?.Invoke(player, command) == true;
 
     private static bool HasAdminActions(CCSPlayerController player) =>
         Allowed(player, "css_forcebombsite") || Allowed(player, "css_forcebombsitestop") ||
         Allowed(player, "css_scramble") || Allowed(player, "css_setnextround") ||
         HasServiceActions(player);
 
+    private static bool HasSpawnActions(CCSPlayerController player) =>
+        Allowed(player, "css_showspawns") || Allowed(player, "css_nearestspawn") ||
+        Allowed(player, "css_addspawn") || Allowed(player, "css_removespawn") || Allowed(player, "css_hidespawns");
+
     private static bool HasServiceActions(CCSPlayerController player) =>
         Allowed(player, "css_mapconfigs") || Allowed(player, "css_mapconfig") ||
-        Allowed(player, "css_showspawns") || Allowed(player, "css_debugqueues");
+        HasSpawnActions(player) || Allowed(player, "css_debugqueues");
 
     private void ShowAdmin(PlayerState state)
     {
@@ -628,7 +645,7 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
         var entries = new List<Tile>();
         if (Allowed(state.Player, "css_mapconfigs") || Allowed(state.Player, "css_mapconfig"))
             entries.Add(new("Конфигурации карт", () => ShowMaps(state)));
-        if (Allowed(state.Player, "css_showspawns"))
+        if (HasSpawnActions(state.Player))
             entries.Add(new("Редактор спавнов", () => ShowSpawns(state)));
         if (Allowed(state.Player, "css_debugqueues"))
             entries.Add(new("Диагностика очереди", () => ShowQueue(state)));
@@ -667,9 +684,9 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
     {
         if (!Allowed(state.Player, "css_debugqueues"))
             return;
-        var queueState = Queue.Get()?.Invoke(state.Player) ?? default;
+        var queueState = Optional(Queue)?.Invoke(state.Player) ?? default;
         Show(state, new Page("Диагностика очереди",
-            [new Tile("Подробности в консоли", () => AdminCommand(state, "css_debugqueues", ""))],
+            [],
             () => ShowService(state), $"Играют: {queueState.Playing} · Ждут: {queueState.Waiting}"));
     }
 
@@ -767,6 +784,7 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
         if (!_menu.Owns(layout) || !_players.TryGetValue(player.Slot, out var state) ||
             player.SteamID != state.SteamId || !Current(state) || state.Menu is not { Captures: true })
             return;
+        state.ClientHasHud = true;
         if (buttonId == "close" || !Enabled)
         {
             Close(state);
@@ -919,21 +937,27 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
         }
     }
 
-    internal bool HasRoundToast(CCSPlayerController player) => Enabled &&
+    internal bool HasRoundToast(CCSPlayerController player) =>
         _players.TryGetValue(player.Slot, out var state) && state.SteamId == player.SteamID &&
-        state.RoundToast && state.Toast is { Valid: true };
+        state.ClientHasHud && state.RoundToast && state.Toast is { Valid: true };
 
     internal void RefreshQueue()
     {
-        if (_queueRefreshPending || !Enabled)
+        if (!Enabled)
+        {
+            if (_players.Count > 0)
+                Reset();
+            return;
+        }
+
+        if (_queueRefreshPending)
             return;
 
         _queueRefreshPending = true;
         Server.NextFrame(() =>
         {
             _queueRefreshPending = false;
-            var queue = Queue.Get();
-            if (!Enabled || queue is null)
+            if (!Enabled || Optional(Queue) is not { } queue)
                 return;
 
             foreach (var player in Utilities.GetPlayers())
@@ -994,4 +1018,3 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
         Reset();
     }
 }
-

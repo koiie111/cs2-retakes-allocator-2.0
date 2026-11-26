@@ -182,4 +182,3 @@ button:disabled { cursor: default; opacity: .48; }
 .hero .agent { position: absolute; bottom: -12px; width: 40%; height: 112%; object-fit: contain; object-position: center bottom; filter: drop-shadow(0 4px 7px #000c); }
 .hero .agent-ct { left: 1%; }
 .hero .agent-t { right: 1%; }
-
