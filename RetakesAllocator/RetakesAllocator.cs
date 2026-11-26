@@ -14,6 +14,7 @@ using CounterStrikeSharp.API.Modules.Utils;
 using CounterStrikeSharp.API.Modules.Events;
 using RetakesAllocatorCore.Managers;
 using RetakesAllocator.Menus;
+using RetakesAllocator.Hud;
 using RetakesAllocatorCore;
 using RetakesAllocatorCore.Config;
 using RetakesAllocatorCore.Db;
@@ -25,7 +26,7 @@ using RetakesPluginShared.Events;
 
 namespace RetakesAllocator;
 
-[MinimumApiVersion(201)]
+[MinimumApiVersion(380)]
 public class RetakesAllocator : BasePlugin
 {
     public override string ModuleName => "Retakes Allocator Plugin";
@@ -35,6 +36,7 @@ public class RetakesAllocator : BasePlugin
 
     private readonly AllocatorMenuManager _allocatorMenuManager = new();
     private readonly AdvancedGunMenu _advancedGunMenu = new();
+    private RetakeHud? _hud;
     private readonly Dictionary<CCSPlayerController, Dictionary<ItemSlotType, CsItem>> _allocatedPlayerItems = new();
     private IRetakesPluginEventSender? RetakesPluginEventSender { get; set; }
 
@@ -65,6 +67,79 @@ public class RetakesAllocator : BasePlugin
         Log.Debug($"Loaded. Hot reload: {hotReload}");
         ResetState();
         Batteries.Init();
+
+        _hud = new RetakeHud(this, (player, round) =>
+            _allocatorMenuManager.GetMenu<VoteMenu>(MenuType.NextRoundVote).CastPanoramaVote(player, round));
+        Capabilities.RegisterPluginCapability(new PluginCapability<Func<CCSPlayerController, bool>>("retakes_allocator:round_toast"),
+            () => player => _hud?.HasRoundToast(player) == true);
+        RegisterListener<Listeners.OnCustomHudClicked>(_hud.Click);
+        // A jointeam request may enter the queue without producing a player_team event.
+        AddTimer(2, _hud.RefreshQueue, TimerFlags.REPEAT);
+        RegisterListener<Listeners.OnMapEnd>(() => _hud?.Reset());
+        RegisterEventHandler<EventPlayerConnectFull>((ev, _) =>
+        {
+            var player = ev.Userid;
+            AddTimer(1.1f, () => _hud?.Join(player), TimerFlags.STOP_ON_MAPCHANGE);
+            _hud?.RefreshQueue();
+            return HookResult.Continue;
+        });
+        RegisterEventHandler<EventPlayerTeam>((ev, _) =>
+        {
+            var player = ev.Userid;
+            Server.NextFrame(() => _hud?.Join(player));
+            _hud?.RefreshQueue();
+            return HookResult.Continue;
+        });
+        RegisterEventHandler<EventPlayerDisconnect>((ev, _) =>
+        {
+            _hud?.Disconnect(ev.Userid);
+            return HookResult.Continue;
+        }, HookMode.Pre);
+        RegisterEventHandler<EventPlayerDeath>((ev, _) =>
+        {
+            _hud?.Close(ev.Userid);
+            return HookResult.Continue;
+        });
+        RegisterEventHandler<EventRoundPrestart>((_, _) =>
+        {
+            _hud?.RoundBoundary();
+            return HookResult.Continue;
+        });
+        RegisterEventHandler<EventRoundEnd>((_, _) =>
+        {
+            _hud?.BetweenRounds();
+            return HookResult.Continue;
+        });
+        RegisterEventHandler<EventRoundFreezeEnd>((_, _) =>
+        {
+            _hud?.RoundBoundary();
+            return HookResult.Continue;
+        });
+
+        AddCommand("css_guns", "Открыть снаряжение ретейка", (player, command) =>
+        {
+            if (player is { IsValid: true } && command.ArgCount == 1 && _hud?.OpenGuns(player) != true)
+                _ = _advancedGunMenu.OpenMenuForPlayerAsync(player);
+        });
+        AddCommand("css_guns_legacy", "Открыть прежнее меню снаряжения ретейка", (player, command) =>
+        {
+            if (player is { IsValid: true } && command.ArgCount == 1)
+            {
+                _hud?.Close(player);
+                _ = _advancedGunMenu.OpenMenuForPlayerAsync(player);
+            }
+        });
+        AddCommand("css_retake", "Как играть в ретейк", (player, _) =>
+        {
+            if (player is { IsValid: true })
+                _hud?.Help(player);
+        });
+        AddCommand("css_retake_close", "Закрыть интерфейс ретейка", (player, _) => _hud?.Close(player));
+        AddCommand("css_retake_admin", "Управление ретейком", (player, _) =>
+        {
+            if (player is { IsValid: true })
+                _hud?.OpenAdmin(player);
+        });
 
         foreach (var command in BuyMenuCommands)
         {
@@ -160,11 +235,14 @@ public class RetakesAllocator : BasePlugin
     public override void Unload(bool hotReload)
     {
         Log.Debug("Unloaded");
+        _hud?.Unload();
+        _hud = null;
         _advancedGunMenu.Cleanup();
         ResetState(loadConfig: false);
         Queries.Disconnect();
 
-        GetRetakesPluginEventSender().RetakesPluginEventHandlers -= RetakesEventHandler;
+        if (RetakesPluginEventSender is { } sender)
+            sender.RetakesPluginEventHandlers -= RetakesEventHandler;
 
         if (Configs.GetConfigData().EnableCanAcquireHook && CustomFunctions != null)
         {
@@ -201,6 +279,7 @@ public class RetakesAllocator : BasePlugin
         Action? handler = @event switch
         {
             AllocateEvent => HandleAllocateEvent,
+            AnnounceBombsiteEvent announcement => () => _hud?.RoundStarted(announcement.Bombsite),
             _ => null
         };
         handler?.Invoke();
@@ -210,7 +289,7 @@ public class RetakesAllocator : BasePlugin
 
     #region Commands
 
-    [ConsoleCommand("css_nextround", "Opens the menu to vote for the next round type.")]
+    [ConsoleCommand("css_nextround", "Открыть голосование за тип следующего раунда.")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnNextRoundCommand(CCSPlayerController? player, CommandInfo commandInfo)
     {
@@ -226,11 +305,12 @@ public class RetakesAllocator : BasePlugin
             return;
         }
 
-        _allocatorMenuManager.OpenMenuForPlayer(player!, MenuType.NextRoundVote);
+        if (_hud?.OpenVote(player!) != true)
+            _allocatorMenuManager.OpenMenuForPlayer(player!, MenuType.NextRoundVote);
     }
 
     [ConsoleCommand("css_gun")]
-    [CommandHelper(usage: "<gun> [T|CT]", whoCanExecute: CommandUsage.CLIENT_ONLY)]
+    [CommandHelper(usage: "<оружие> [T|CT]", whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnWeaponCommand(CCSPlayerController? player, CommandInfo commandInfo)
     {
         if (!Configs.GetConfigData().GunCommandsEnabled)
@@ -264,7 +344,7 @@ public class RetakesAllocator : BasePlugin
         // Preferences now only affect the next allocation; no weapon swap during the current round
     }
 
-    [ConsoleCommand("css_awp", "Join or leave the AWP queue.")]
+    [ConsoleCommand("css_awp", "Включить или отключить выбор AWP.")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnAwpCommand(CCSPlayerController? player, CommandInfo commandInfo)
     {
@@ -313,7 +393,7 @@ public class RetakesAllocator : BasePlugin
         Helpers.WriteNewlineDelimited(result.Item1, commandInfo.ReplyToCommand);
     }
 
-    [ConsoleCommand("css_ssg", "Join or leave the SSG queue.")]
+    [ConsoleCommand("css_ssg", "Включить или отключить выбор SSG 08.")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnSsgCommand(CCSPlayerController? player, CommandInfo commandInfo)
     {
@@ -365,7 +445,7 @@ public class RetakesAllocator : BasePlugin
         Helpers.WriteNewlineDelimited(result.Item1, commandInfo.ReplyToCommand);
     }
 
-    [ConsoleCommand("css_zeus", "Toggle whether you will receive a Zeus.")]
+    [ConsoleCommand("css_zeus", "Включить или отключить получение Zeus.")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnZeusCommand(CCSPlayerController? player, CommandInfo commandInfo)
     {
@@ -401,7 +481,7 @@ public class RetakesAllocator : BasePlugin
         Helpers.WriteNewlineDelimited(Translator.Instance[messageKey], commandInfo.ReplyToCommand);
     }
 
-    [ConsoleCommand("css_enemy", "Toggle enemy weapon preferences.")]
+    [ConsoleCommand("css_enemy", "Настроить выбор оружия другой стороны.")]
     [CommandHelper(usage: "[disable|t|ct|both]", whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnEnemyWeaponsCommand(CCSPlayerController? player, CommandInfo commandInfo)
     {
@@ -453,7 +533,7 @@ public class RetakesAllocator : BasePlugin
     }
 
     [ConsoleCommand("css_removegun")]
-    [CommandHelper(minArgs: 1, usage: "<gun> [T|CT]", whoCanExecute: CommandUsage.CLIENT_ONLY)]
+    [CommandHelper(minArgs: 1, usage: "<оружие> [T|CT]", whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnRemoveWeaponCommand(CCSPlayerController? player, CommandInfo commandInfo)
     {
         if (!Configs.GetConfigData().GunCommandsEnabled)
@@ -480,7 +560,7 @@ public class RetakesAllocator : BasePlugin
         commandInfo.ReplyToCommand($"{MessagePrefix}{result}");
     }
 
-    [ConsoleCommand("css_setnextround", "Sets the next round type.")]
+    [ConsoleCommand("css_setnextround", "Выбрать тип следующего раунда.")]
     [CommandHelper(minArgs: 1, usage: "<P/H/F>", whoCanExecute: CommandUsage.CLIENT_ONLY)]
     [RequiresPermissions("@css/root")]
     public void OnSetNextRoundCommand(CCSPlayerController? player, CommandInfo commandInfo)
@@ -501,17 +581,18 @@ public class RetakesAllocator : BasePlugin
         }
     }
 
-    [ConsoleCommand("css_reload_allocator_config", "Reloads the cs2-retakes-allocator config.")]
+    [ConsoleCommand("css_reload_allocator_config", "Перезагрузить конфигурацию аллокатора.")]
     [RequiresPermissions("@css/root")]
     public void OnReloadAllocatorConfigCommand(CCSPlayerController? player, CommandInfo commandInfo)
     {
         commandInfo.ReplyToCommand($"{MessagePrefix}{Translator.Instance["command.reload_config", ModuleVersion]}");
         Configs.Load(ModuleDirectory);
+        _hud?.Reset();
         RoundTypeManager.Instance.Initialize();
     }
 
-    [ConsoleCommand("css_print_config", "Print the entire config or a specific config.")]
-    [CommandHelper(usage: "<config>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
+    [ConsoleCommand("css_print_config", "Вывести всю конфигурацию или отдельный раздел.")]
+    [CommandHelper(usage: "<раздел>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
     [RequiresPermissions("@css/root")]
     public void OnPrintConfigCommand(CCSPlayerController? player, CommandInfo commandInfo)
     {
@@ -940,7 +1021,7 @@ public class RetakesAllocator : BasePlugin
                 _bombsite == "B" ? Translator.Instance["BombSite.B"] : "";
             foreach (var player in playerEntities)
             {
-                if (!player.IsValid || !player.PawnIsAlive || player.IsBot || player.IsHLTV) continue;
+                if (!player.IsValid || !player.PawnIsAlive || player.IsBot || player.IsHLTV || _hud?.HasRoundToast(player) == true) continue;
 
                 if (player.TeamNum == (byte) CsTeam.Terrorist &&
                     !Configs.GetConfigData().BombSiteAnnouncementCenterToCTOnly)
@@ -1103,7 +1184,20 @@ public class RetakesAllocator : BasePlugin
 
         if (!string.IsNullOrEmpty(Configs.GetConfigData().InGameGunMenuCenterCommands))
         {
-            _advancedGunMenu.OnEventPlayerChat(@event, info);
+            // CounterStrikeSharp owns !guns and /guns through css_guns. Preserve
+            // the allocator's additional configured plain-chat aliases.
+            var text = (@event.Text ?? "").Trim();
+            if (text.Equals("!guns", StringComparison.OrdinalIgnoreCase) ||
+                text.Equals("/guns", StringComparison.OrdinalIgnoreCase))
+                return HookResult.Continue;
+
+            var chatPlayer = Utilities.GetPlayerFromUserid(@event.Userid);
+            if (chatPlayer is not { IsValid: true } ||
+                !Configs.GetConfigData().InGameGunMenuCenterCommands.Split(',',
+                    StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                    .Contains(text, StringComparer.OrdinalIgnoreCase) ||
+                _hud?.OpenGuns(chatPlayer) != true)
+                _advancedGunMenu.OnEventPlayerChat(@event, info);
         }
 
         var eventplayer = @event.Userid;

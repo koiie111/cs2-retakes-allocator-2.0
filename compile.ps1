@@ -6,7 +6,7 @@ $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $root
 
 $solution = Join-Path $root 'cs2-retakes-allocator.sln'
-$buildOutput = Join-Path $root 'RetakesAllocator/bin/Release/net8.0'
+$buildOutput = Join-Path $root 'RetakesAllocator/bin/Release/net10.0'
 $compiledRoot = Join-Path $root 'compiled'
 $pluginName = 'RetakesAllocator'
 $pluginTarget = Join-Path $compiledRoot "counterstrikesharp/plugins/$pluginName"
@@ -20,7 +20,9 @@ Remove-Item -Recurse -Force $compiledRoot -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Path $pluginTarget -Force | Out-Null
 
 dotnet restore $solution
-dotnet build $solution -c Release --no-restore --nologo
+if ($LASTEXITCODE -ne 0) { throw "Restore failed." }
+dotnet build $solution -c Release --no-restore --nologo -p:SkipRetakesPackaging=true
+if ($LASTEXITCODE -ne 0) { throw "Release build failed." }
 
 if (-not (Test-Path $buildOutput)) {
     throw "Build output not found at $buildOutput"

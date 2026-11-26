@@ -335,6 +335,7 @@ public record ConfigData
 
     public bool MigrateOnStartup { get; set; } = true;
     public bool ResetStateOnGameRestart { get; set; } = true;
+    public bool EnablePanoramaHud { get; set; }
     public bool AllowAllocationAfterFreezeTime { get; set; } = true;
     public bool UseOnTickFeatures { get; set; } = true;
     public bool CapabilityWeaponPaints { get; set; } = true;
@@ -604,6 +605,7 @@ public record ConfigFileLayout
         Config = new ConfigCategory
         {
             ResetStateOnGameRestart = data.ResetStateOnGameRestart,
+            EnablePanoramaHud = data.EnablePanoramaHud,
             AllowAllocationAfterFreezeTime = data.AllowAllocationAfterFreezeTime,
             UseOnTickFeatures = data.UseOnTickFeatures,
             CapabilityWeaponPaints = data.CapabilityWeaponPaints,
@@ -696,6 +698,11 @@ public record ConfigFileLayout
             {
                 data.ResetStateOnGameRestart = resetStateOnGameRestart;
             }
+            if (Config.EnablePanoramaHud is bool enablePanoramaHud)
+            {
+                data.EnablePanoramaHud = enablePanoramaHud;
+            }
+
             if (Config.AllowAllocationAfterFreezeTime is bool allowAllocationAfterFreezeTime)
             {
                 data.AllowAllocationAfterFreezeTime = allowAllocationAfterFreezeTime;
@@ -1003,6 +1010,7 @@ public record ConfigFileLayout
 public record ConfigCategory
 {
     public bool? ResetStateOnGameRestart { get; set; }
+    public bool? EnablePanoramaHud { get; set; }
     public bool? AllowAllocationAfterFreezeTime { get; set; }
     public bool? UseOnTickFeatures { get; set; }
     public bool? CapabilityWeaponPaints { get; set; }

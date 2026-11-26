@@ -177,6 +177,11 @@ public static class WeaponHelpers
 
     public static readonly CsItem RandomSniperPreference = (CsItem)RandomSniperPreferenceValue;
 
+    // The existing JSON preference column stores enum values. Reserve two
+    // values outside the engine's item IDs for these explicit policies.
+    public const CsItem DefaultLoadoutPreference = (CsItem)(RandomSniperPreferenceValue + 1);
+    public const CsItem RandomLoadoutPreference = (CsItem)(RandomSniperPreferenceValue + 2);
+
     private static readonly IReadOnlyList<CsItem> _randomSniperPool = new List<CsItem>
     {
         CsItem.AWP,
@@ -360,6 +365,8 @@ public static class WeaponHelpers
 
     private static readonly Dictionary<CsItem, string> _weaponNameOverrides = new()
     {
+        {DefaultLoadoutPreference, "По умолчанию"},
+        {RandomLoadoutPreference, "Случайно"},
         {CsItem.M4A4, "M4A4"},
         {CsItem.Tec9, "TEC9"},
     };
@@ -890,11 +897,11 @@ public static class WeaponHelpers
         return IsUsableWeapon(defaultWeapon.Value) ? defaultWeapon : null;
     }
 
-    private static CsItem GetRandomWeaponForAllocationType(WeaponAllocationType allocationType, CsTeam team)
+    private static CsItem? GetRandomWeaponForAllocationType(WeaponAllocationType allocationType, CsTeam team)
     {
         if (team != CsTeam.Terrorist && team != CsTeam.CounterTerrorist)
         {
-            return CsItem.Deagle;
+            return null;
         }
 
         var availableWeapons = GetAvailableWeaponsForTeamAndAllocationType(allocationType, team)
@@ -903,7 +910,7 @@ public static class WeaponHelpers
 
         if (availableWeapons.Count == 0)
         {
-            return CsItem.Deagle;
+            return null;
         }
 
         return Utils.Choice(availableWeapons);
@@ -920,10 +927,20 @@ public static class WeaponHelpers
     {
         CsItem? weapon = null;
 
-        if (Configs.GetConfigData().CanPlayersSelectWeapons() && userSetting is not null)
+        var config = Configs.GetConfigData();
+        var useDefault = false;
+        if (config.CanPlayersSelectWeapons() && userSetting is not null)
         {
             var weaponPreference = userSetting.GetWeaponPreference(team, allocationType);
-            if (IsRandomSniperPreference(weaponPreference))
+            if (allocationType != WeaponAllocationType.Preferred && weaponPreference == DefaultLoadoutPreference && config.CanAssignDefaultWeapons())
+            {
+                useDefault = true;
+            }
+            else if (allocationType != WeaponAllocationType.Preferred && weaponPreference == RandomLoadoutPreference && config.CanAssignRandomWeapons())
+            {
+                weapon = GetRandomWeaponForAllocationType(allocationType, team);
+            }
+            else if (IsRandomSniperPreference(weaponPreference))
             {
                 weapon = ChooseRandomSniperWeapon();
             }
@@ -933,12 +950,12 @@ public static class WeaponHelpers
             }
         }
 
-        if (weapon is null && Configs.GetConfigData().CanAssignRandomWeapons())
+        if (weapon is null && !useDefault && config.CanAssignRandomWeapons())
         {
             weapon = GetRandomWeaponForAllocationType(allocationType, team);
         }
 
-        if (weapon is null && Configs.GetConfigData().CanAssignDefaultWeapons())
+        if (weapon is null && config.CanAssignDefaultWeapons())
         {
             weapon = GetDefaultWeaponForAllocationType(allocationType, team);
         }
@@ -1026,6 +1043,9 @@ public static class WeaponHelpers
                 ref enemyStuffGranted
             )
             ?? GetRandomWeaponForAllocationType(allocationType, enemyTeam);
+
+        if (enemyWeapon is null)
+            return weapon;
 
         if (!enemyWeapon.Equals(weapon))
         {
