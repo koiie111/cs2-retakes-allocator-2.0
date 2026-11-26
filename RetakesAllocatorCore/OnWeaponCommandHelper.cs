@@ -101,6 +101,9 @@ public class OnWeaponCommandHelper
         }
 
 
+        if (userId == 0)
+            return Ret(Translator.Instance["weapon_preference.not_saved"]);
+
         if (isPreferred && togglePreferred)
         {
             var removed = await Queries.ToggleAwpWeaponPreferenceAsync(userId, team, weapon, removeAnyPreferred);
@@ -148,11 +151,6 @@ public class OnWeaponCommandHelper
         if (allocateImmediately)
         {
             outWeapon = weapon;
-        }
-
-        if (userId == 0)
-        {
-            message = Translator.Instance["weapon_preference.not_saved"];
         }
 
         return Ret(message);

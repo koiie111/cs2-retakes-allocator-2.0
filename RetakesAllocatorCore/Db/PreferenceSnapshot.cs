@@ -22,8 +22,12 @@ public sealed class PreferenceSnapshot : IWeaponPreferences
             return;
 
         foreach (var (team, weapons) in settings.WeaponPreferences)
+        {
+            if (weapons is null)
+                continue;
             foreach (var (allocation, weapon) in weapons)
                 _weapons[(team, allocation)] = weapon;
+        }
     }
 
     public bool ZeusEnabled { get; }

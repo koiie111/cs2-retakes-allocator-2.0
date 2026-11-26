@@ -37,6 +37,7 @@
   "weapon_preference.round.full_buy": "Полная закупка",
   "weapon_preference.round.buy": "Раунды с закупкой",
   "weapon_preference.invalid_steam_id": "Настройки не сохранены. Steam ID недействителен.",
+  "weapon_preference.storage_error": "Не удалось загрузить или сохранить настройки. Попробуйте ещё раз.",
   "weapon_preference.not_saved": "Настройки можно сохранить только с действительным Steam ID.",
   "weapon_preference.only_vip_can_use": "Эта команда доступна только VIP-игрокам.",
   "weapon_preference.awp_disabled": "Выбор AWP отключён.",

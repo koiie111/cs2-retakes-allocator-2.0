@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Logging;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
@@ -37,6 +38,7 @@ public class RetakesAllocator : BasePlugin
     private readonly AllocatorMenuManager _allocatorMenuManager = new();
     private readonly AdvancedGunMenu _advancedGunMenu = new();
     private RetakeHud? _hud;
+    private StrongBox<Func<CCSPlayerController, bool>?>? _toastProvider;
     private readonly Dictionary<CCSPlayerController, Dictionary<ItemSlotType, CsItem>> _allocatedPlayerItems = new();
     private IRetakesPluginEventSender? RetakesPluginEventSender { get; set; }
 
@@ -47,6 +49,7 @@ public class RetakesAllocator : BasePlugin
     private bool _announceBombsite;
     private bool _bombsiteAnnounceOneTime;
     private bool _weaponDataSignatureFailed;
+    private bool _canAcquireHooked;
     private bool _active;
     private bool _centerTickRegistered;
     private bool _centerPending;
@@ -103,7 +106,7 @@ public class RetakesAllocator : BasePlugin
             catch (Exception error)
             {
                 Logger.LogError(error, "Could not save Retakes preferences");
-                message = Translator.Instance["weapon_preference.not_saved"];
+                message = Translator.Instance["weapon_preference.storage_error"];
             }
 
             Server.NextFrame(() =>
@@ -139,8 +142,7 @@ public class RetakesAllocator : BasePlugin
 
         _hud = new RetakeHud(this, (player, round) =>
             _allocatorMenuManager.GetMenu<VoteMenu>(MenuType.NextRoundVote).CastPanoramaVote(player, round));
-        Capabilities.RegisterPluginCapability(new PluginCapability<Func<CCSPlayerController, bool>>("retakes_allocator:round_toast"),
-            () => player => _hud?.HasRoundToast(player) == true);
+        PublishToastProvider(_hud.HasRoundToast);
         RegisterListener<Listeners.OnCustomHudClicked>(_hud.Click);
         // A jointeam request may enter the queue without producing a player_team event.
         UpdateQueueTimer();
@@ -199,10 +201,11 @@ public class RetakesAllocator : BasePlugin
             _hud?.RefreshQueue();
             return HookResult.Continue;
         });
-        RegisterEventHandler<EventPlayerDisconnect>((ev, _) =>
+        RegisterEventHandler<EventPlayerDisconnect>((ev, info) =>
         {
             if (ev.Userid is { } player)
             {
+                _ = Queries.ForgetPlayer(player.SteamID);
                 _sessions.Remove(player.Slot);
                 _allocatedPlayerItems.Remove(player);
             }
@@ -226,6 +229,8 @@ public class RetakesAllocator : BasePlugin
         });
         RegisterEventHandler<EventRoundEnd>((_, _) =>
         {
+            _roundGeneration++;
+            IsAllocatingForRound = false;
             _hud?.BetweenRounds();
             return HookResult.Continue;
         });
@@ -287,34 +292,33 @@ public class RetakesAllocator : BasePlugin
                 {
                     if (!_active)
                         return;
-                    CustomFunctions ??= new();
-                    // Must unhook the old functions before reloading and rehooking
-                    CustomFunctions.CCSPlayer_ItemServices_CanAcquireFunc?.Unhook(OnWeaponCanAcquire, HookMode.Pre);
-                    CustomFunctions.LoadCustomGameData();
-                    if (Configs.GetConfigData().EnableCanAcquireHook)
-                    {
-                        CustomFunctions.CCSPlayer_ItemServices_CanAcquireFunc?.Hook(OnWeaponCanAcquire, HookMode.Pre);
-                    }
+                    UpdateGameData(reload: true);
                 });
             });
         }
 
         AddTimer(0.1f, () => { GetRetakesPluginEventSender().RetakesPluginEventHandlers += RetakesEventHandler; });
 
-        if (useCustomGameData)
-        {
-            CustomFunctions = new();
-
-            if (Configs.GetConfigData().EnableCanAcquireHook)
-            {
-                CustomFunctions.CCSPlayer_ItemServices_CanAcquireFunc?.Hook(OnWeaponCanAcquire, HookMode.Pre);
-            }
-        }
+        UpdateGameData();
 
         if (hotReload)
         {
             HandleHotReload();
         }
+    }
+
+    private void PublishToastProvider(Func<CCSPlayerController, bool> hasToast)
+    {
+        const string toastKey = "retakes_allocator:round_toast";
+        // CSS# retains the first supplier. Replace its delegate when the allocator reloads.
+        if (AppContext.GetData(toastKey) is not StrongBox<Func<CCSPlayerController, bool>?> slot)
+        {
+            slot = new();
+            AppContext.SetData(toastKey, slot);
+            Capabilities.RegisterPluginCapability(new PluginCapability<Func<CCSPlayerController, bool>>(toastKey), () => slot.Value!);
+        }
+        _toastProvider = slot;
+        slot.Value = hasToast;
     }
 
     private void ResetState(bool loadConfig = true)
@@ -323,6 +327,11 @@ public class RetakesAllocator : BasePlugin
         {
             Configs.Load(ModuleDirectory, true);
             ConfigureDatabase();
+            if (_active)
+            {
+                UpdateQueueTimer();
+                UpdateGameData();
+            }
         }
 
         Translator.Initialize(Localizer);
@@ -346,6 +355,8 @@ public class RetakesAllocator : BasePlugin
     public override void Unload(bool hotReload)
     {
         _active = false;
+        if (_toastProvider is not null)
+            _toastProvider.Value = null;
         _sessions.Clear();
         Log.Debug("Unloaded");
         _queueTimer?.Kill();
@@ -359,15 +370,40 @@ public class RetakesAllocator : BasePlugin
         if (RetakesPluginEventSender is { } sender)
             sender.RetakesPluginEventHandlers -= RetakesEventHandler;
 
-        if (Configs.GetConfigData().EnableCanAcquireHook && CustomFunctions != null)
+        UnhookCanAcquire();
+        CustomFunctions = null;
+    }
+
+    private void UnhookCanAcquire()
+    {
+        if (!_canAcquireHooked)
+            return;
+        CustomFunctions!.CCSPlayer_ItemServices_CanAcquireFunc!.Unhook(OnWeaponCanAcquire, HookMode.Pre);
+        _canAcquireHooked = false;
+    }
+
+    private void UpdateGameData(bool reload = false)
+    {
+        var config = Configs.GetConfigData();
+        if (reload || !config.EnableCanAcquireHook)
+            UnhookCanAcquire();
+        if (!config.EnableCanAcquireHook && !config.CapabilityWeaponPaints)
         {
-            CustomFunctions.CCSPlayer_ItemServices_CanAcquireFunc?.Unhook(OnWeaponCanAcquire, HookMode.Pre);
+            CustomFunctions = null;
+            return;
         }
 
-        if (CustomFunctions != null)
+        if (reload || CustomFunctions is null)
         {
-            // Clear references to custom game data to avoid native calls after unload
-            CustomFunctions = null;
+            CustomFunctions = new CustomGameData();
+            _weaponDataSignatureFailed = false;
+        }
+
+        if (config.EnableCanAcquireHook && !_canAcquireHooked &&
+            CustomFunctions.CCSPlayer_ItemServices_CanAcquireFunc is { } canAcquire)
+        {
+            canAcquire.Hook(OnWeaponCanAcquire, HookMode.Pre);
+            _canAcquireHooked = true;
         }
     }
 
@@ -610,8 +646,10 @@ public class RetakesAllocator : BasePlugin
         commandInfo.ReplyToCommand($"{MessagePrefix}Reloading config for version {ModuleVersion}");
         Configs.Load(ModuleDirectory);
         ConfigureDatabase(retryMigration: true);
+        UpdateGameData();
         CloseCenterAnnouncement();
         _hud?.Reset();
+        _advancedGunMenu.Cleanup();
         UpdateQueueTimer();
         PrefetchPlayers();
         RoundTypeManager.Instance.Initialize();
@@ -917,10 +955,12 @@ public class RetakesAllocator : BasePlugin
         menu.GatherAndHandleVotes();
 
         var allPlayers = Utilities.GetPlayers();
-        var participants = allPlayers.Select(player => new RoundPlayer(player, player.Slot,
-            Helpers.GetSteamId(player), player.Team, player.PlayerPawn.Raw, GetSession(player),
-            Helpers.HasAwpPermission(player), Helpers.HasSsgPermission(player),
-            Helpers.HasEnemyStuffPermission(player))).ToArray();
+        var participants = allPlayers
+            .Where(player => player.Team is CsTeam.Terrorist or CsTeam.CounterTerrorist && player.PawnIsAlive)
+            .Select(player => new RoundPlayer(player, player.Slot,
+                Helpers.GetSteamId(player), player.Team, player.PlayerPawn.Raw, GetSession(player),
+                Helpers.HasAwpPermission(player), Helpers.HasSsgPermission(player),
+                Helpers.HasEnemyStuffPermission(player))).ToArray();
         Queries.Prefetch(participants.Where(player => !Queries.HasSnapshot(player.SteamId))
             .Select(player => player.SteamId));
 
@@ -980,15 +1020,17 @@ public class RetakesAllocator : BasePlugin
         if (!_active || generation != _roundGeneration)
             return;
 
+        // A disconnect, team change or respawn must not consume a team-limited item.
+        var recipients = participants.Where(IsCurrent).ToArray();
         var snapshots = new Dictionary<ulong, PreferenceSnapshot>();
-        foreach (var participant in participants)
+        foreach (var participant in recipients)
         {
             if (participant.SteamId != 0 && Queries.ReadSnapshot(participant.SteamId) is { } settings)
                 snapshots[participant.SteamId] = settings;
         }
 
         var slots = new List<(RoundPlayer Player, string Slot)>(participants.Length);
-        OnRoundPostStartHelper.Handle(participants, player => player?.SteamId ?? 0, player => player.Team,
+        OnRoundPostStartHelper.Handle(recipients, player => player?.SteamId ?? 0, player => player.Team,
             player =>
             {
                 if (!IsCurrent(player))
@@ -1216,6 +1258,7 @@ public class RetakesAllocator : BasePlugin
             if (entity.AbsOrigin is not { } position || (playerPosition - position).Length() > 400f)
                 continue;
             _bombsite = entity.DesignerName == "info_bomb_target_hint_A" ? "A" : "B";
+            _bombsiteAnnounceOneTime = true;
             if (config.EnableBombSiteAnnouncementChat)
                 for (var line = 1; line <= 6; line++)
                     Server.PrintToChatAll(Localizer[$"chat{_bombsite}site.line{line}"]);
@@ -1233,7 +1276,6 @@ public class RetakesAllocator : BasePlugin
                         if (generation != _centerGeneration)
                             return;
                         _centerPending = false;
-                        _bombsiteAnnounceOneTime = true;
                         _announceBombsite = true;
                         if (config.UseOnTickFeatures && !_centerTickRegistered)
                         {

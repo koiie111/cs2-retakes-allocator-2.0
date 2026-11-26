@@ -55,10 +55,11 @@ public class UserSetting : IWeaponPreferences
     public void SetWeaponPreference(CsTeam team, WeaponAllocationType weaponAllocationType, CsItem? weapon)
     {
         // Log.Write($"Setting preference for {UserId} {team} {weaponAllocationType} {weapon}");
-        if (!WeaponPreferences.TryGetValue(team, out var allocationPreference))
+        WeaponPreferences ??= new();
+        if (WeaponPreferences.GetValueOrDefault(team) is not { } allocationPreference)
         {
             allocationPreference = new();
-            WeaponPreferences.Add(team, allocationPreference);
+            WeaponPreferences[team] = allocationPreference;
         }
 
         if (weapon is not null)
@@ -73,7 +74,7 @@ public class UserSetting : IWeaponPreferences
 
     public CsItem? GetWeaponPreference(CsTeam team, WeaponAllocationType weaponAllocationType)
     {
-        if (WeaponPreferences.TryGetValue(team, out var allocationPreference))
+        if (WeaponPreferences?.GetValueOrDefault(team) is { } allocationPreference)
         {
             if (allocationPreference.TryGetValue(weaponAllocationType, out var weapon))
             {

@@ -254,70 +254,37 @@ public static class Helpers
 
     private static async Task<bool> CheckAndDownloadFile(string filePath, string githubUrl, string directoryPath)
     {
-        if (!File.Exists(filePath))
-        {
-            if (!Directory.Exists(directoryPath))
-            {
-                Directory.CreateDirectory(directoryPath);
-            }
-            await DownloadFileFromGithub(githubUrl, filePath);
-            return true;
-        }
-
-        bool isFileDifferent = await IsFileDifferent(filePath, githubUrl);
-        if (isFileDifferent)
-        {
-            File.Delete(filePath);
-            await DownloadFileFromGithub(githubUrl, filePath);
-            return true;
-        }
-
-        return false;
-    }
-
-    private static async Task<bool> IsFileDifferent(string localFilePath, string githubUrl)
-    {
+        string? temporary = null;
         try
         {
-            byte[] localFileBytes = await File.ReadAllBytesAsync(localFilePath);
-            string localFileHash = GetFileHash(localFileBytes);
+            using var client = new HttpClient();
+            var bytes = await client.GetByteArrayAsync(githubUrl);
+            using var document = System.Text.Json.JsonDocument.Parse(bytes);
+            if (document.RootElement.ValueKind != System.Text.Json.JsonValueKind.Object)
+                throw new InvalidDataException("Expected a gamedata object.");
 
-            using (HttpClient client = new HttpClient())
+            if (File.Exists(filePath))
             {
-                byte[] githubFileBytes = await client.GetByteArrayAsync(githubUrl);
-                string githubFileHash = GetFileHash(githubFileBytes);
-                return localFileHash != githubFileHash;
+                var existing = await File.ReadAllBytesAsync(filePath);
+                if (bytes.AsSpan().SequenceEqual(existing))
+                    return false;
             }
+
+            Directory.CreateDirectory(directoryPath);
+            temporary = Path.Combine(directoryPath, Path.GetRandomFileName());
+            await File.WriteAllBytesAsync(temporary, bytes);
+            File.Move(temporary, filePath, overwrite: true);
+            return true;
         }
-        catch (Exception ex)
+        catch (Exception error)
         {
-            Log.Warn($"Error comparing files: {ex.Message}");
+            Log.Warn($"Could not update gamedata: {error.Message}");
             return false;
         }
-    }
-
-    private static string GetFileHash(byte[] fileBytes)
-    {
-        using (var md5 = System.Security.Cryptography.MD5.Create())
+        finally
         {
-            byte[] hashBytes = md5.ComputeHash(fileBytes);
-            return BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
-        }
-    }
-
-    private static async Task DownloadFileFromGithub(string url, string destinationPath)
-    {
-        using (HttpClient client = new HttpClient())
-        {
-            try
-            {
-                byte[] fileBytes = await client.GetByteArrayAsync(url);
-                await File.WriteAllBytesAsync(destinationPath, fileBytes);
-            }
-            catch (Exception ex)
-            {
-                Log.Warn($"Error downloading file: {ex.Message}");
-            }
+            if (temporary is not null && File.Exists(temporary))
+                File.Delete(temporary);
         }
     }
 }

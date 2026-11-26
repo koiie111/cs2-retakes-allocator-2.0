@@ -51,6 +51,42 @@ public class PreferenceQueueTests : BaseTestFixture
         Assert.That(Queries.IsZeusEnabled(id), Is.True);
     }
 
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task LegacyNullWeaponPreferencesRemainReadableAndEditable(bool nullTeam)
+    {
+        const ulong id = 76561198000000006;
+        await using (var db = new Db())
+        {
+            var row = new UserSetting { UserId = id, ZeusEnabled = true };
+            if (nullTeam)
+                row.WeaponPreferences[CsTeam.Terrorist] = null!;
+            else
+                row.WeaponPreferences = null!;
+            db.UserSettings.Add(row);
+            await db.SaveChangesAsync();
+        }
+
+        var settings = await Queries.GetUserSettings(id);
+        Assert.That(settings!.GetWeaponPreference(CsTeam.Terrorist, WeaponAllocationType.PistolRound), Is.Null);
+        Assert.That(Queries.IsZeusEnabled(id), Is.True);
+        await Queries.SetWeaponPreferenceForUserAsync(id, CsTeam.Terrorist, WeaponAllocationType.PistolRound, CsItem.Deagle);
+        var updated = await Queries.GetUserSettings(id);
+        Assert.That(updated!.GetWeaponPreference(CsTeam.Terrorist, WeaponAllocationType.PistolRound), Is.EqualTo(CsItem.Deagle));
+        Assert.That(updated.ZeusEnabled, Is.True);
+    }
+
+    [Test]
+    public async Task DisconnectEvictsPendingWritesAndReconnectReloadsThem()
+    {
+        const ulong id = 76561198000000005;
+        var write = Queries.SetZeusPreferenceAsync(id, true);
+        await Queries.ForgetPlayer(id);
+        await write;
+        Assert.That(Queries.HasSnapshot(id), Is.False);
+        Assert.That((await Queries.GetUserSettings(id))?.ZeusEnabled, Is.True);
+    }
+
     [Test]
     public async Task MissingRowDoesNotLookLikeAnUnknownSnapshot()
     {

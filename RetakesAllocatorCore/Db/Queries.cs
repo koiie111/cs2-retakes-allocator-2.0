@@ -93,6 +93,26 @@ public class Queries
     public static PreferenceSnapshot? ReadSnapshot(ulong userId) =>
         Cache.TryGetValue(userId, out var cached) ? cached.Value : null;
 
+    // Queue eviction behind any pending write or refresh for the departing player.
+    public static Task ForgetPlayer(ulong userId)
+    {
+        if (userId == 0)
+            return Task.CompletedTask;
+
+        lock (WorkLock)
+        {
+            // A reconnect must be able to schedule a fresh read after eviction.
+            Refreshing.Remove(userId);
+            return Enqueue((generation, config) =>
+            {
+                lock (WorkLock)
+                    if (generation == _databaseGeneration)
+                        Cache.TryRemove(userId, out _);
+                return Task.FromResult(true);
+            });
+        }
+    }
+
     public static bool HasSnapshot(ulong userId) => Cache.ContainsKey(userId);
 
     public static bool IsZeusEnabled(ulong userId) =>
@@ -167,7 +187,6 @@ public class Queries
             db.Entry(settings).State = EntityState.Modified;
         }
 
-        settings.WeaponPreferences ??= new();
         mutation(settings);
         await db.SaveChangesAsync();
         Publish(generation, userId, settings);
