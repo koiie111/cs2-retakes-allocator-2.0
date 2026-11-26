@@ -27,7 +27,10 @@ public class VoteMenu : AbstractBaseMenu
 
         foreach (var option in _voteManager.GetVoteOptions())
         {
-            menu.AddMenuOption(option, OnVoteSelect);
+            var label = RoundTypeHelpers.ParseRoundType(option) is { } roundType
+                ? RoundTypeHelpers.TranslateRoundTypeName(roundType)
+                : option;
+            menu.AddMenuOption(label, (voter, _) => OnVoteSelect(voter, option));
         }
 
         menu.AddMenuOption(Translator.Instance["menu.exit"], OnSelectExit);
@@ -92,14 +95,14 @@ public class VoteMenu : AbstractBaseMenu
     }
 
 
-    private void OnVoteSelect(CCSPlayerController player, ChatMenuOption option)
+    private void OnVoteSelect(CCSPlayerController player, string option)
     {
         if (!PlayersInMenu.Contains(player))
         {
             return;
         }
 
-        _voteManager.CastVote(player, option.Text);
+        _voteManager.CastVote(player, option);
 
         OnMenuComplete(player);
     }

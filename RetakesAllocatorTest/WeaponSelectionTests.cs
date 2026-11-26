@@ -91,35 +91,35 @@ public class WeaponSelectionTests : BaseTestFixture
     }
 
     [Test]
-    [TestCase(RoundType.FullBuy, CsTeam.Terrorist, "galil", CsItem.Galil, "Galil applied for Full Buy as T.", "Galil removed from Full Buy as T.")]
-    [TestCase(RoundType.HalfBuy, CsTeam.Terrorist, "galil", null, "Galil applied for Full Buy as T.",
-        "Galil removed from Full Buy as T.")]
-    [TestCase(RoundType.FullBuy, CsTeam.Terrorist, "krieg", CsItem.Krieg, "SG553 applied for Full Buy as T.", "SG553 removed from Full Buy as T.")]
-    [TestCase(RoundType.HalfBuy, CsTeam.Terrorist, "mac10", CsItem.Mac10, "Mac10 applied for Half Buy as T.", "Mac10 removed from Half Buy as T.")]
-    [TestCase(RoundType.FullBuy, CsTeam.Terrorist, "mac10", null, "Mac10 applied for Half Buy as T.",
-        "Mac10 removed from Half Buy as T.")]
-    [TestCase(RoundType.Pistol, CsTeam.CounterTerrorist, "deag", CsItem.Deagle, "Deagle applied for Pistol Round as CT.",
-        "Deagle removed from Pistol Round as CT.")]
-    [TestCase(RoundType.FullBuy, CsTeam.CounterTerrorist, "deag", CsItem.Deagle, "Deagle applied for Full Buy as CT.",
-        "Deagle removed from Full Buy as CT.")]
-    [TestCase(RoundType.HalfBuy, CsTeam.CounterTerrorist, "deag", CsItem.Deagle, "Deagle applied for Half Buy as CT.",
-        "Deagle removed from Half Buy as CT.")]
-    [TestCase(RoundType.FullBuy, CsTeam.CounterTerrorist, "galil", null, "Galil' is not valid", null)]
-    [TestCase(RoundType.Pistol, CsTeam.CounterTerrorist, "tec9", null, "Tec9' is not valid", null)]
-    [TestCase(RoundType.FullBuy, CsTeam.Terrorist, "poop", null, "not found", null)]
-    [TestCase(RoundType.FullBuy, CsTeam.Terrorist, "galil,T", CsItem.Galil, "Galil applied for Full Buy as T.", null)]
-    [TestCase(RoundType.FullBuy, CsTeam.Terrorist, "krieg,T", CsItem.Krieg, "SG553 applied for Full Buy as T.", null)]
-    [TestCase(RoundType.HalfBuy, CsTeam.Terrorist, "mac10,T", CsItem.Mac10, "Mac10 applied for Half Buy as T.", null)]
-    [TestCase(RoundType.HalfBuy, CsTeam.None, "mac10,T", null, "Mac10 applied for Half Buy as T.", null)]
-    [TestCase(RoundType.Pistol, CsTeam.CounterTerrorist, "deag,CT", CsItem.Deagle, "Deagle applied for Pistol Round as CT.", null)]
-    [TestCase(RoundType.FullBuy, CsTeam.CounterTerrorist, "galil,CT", null, "Galil' is not valid", null)]
-    [TestCase(RoundType.Pistol, CsTeam.CounterTerrorist, "tec9,CT", null, "Tec9' is not valid", null)]
-    [TestCase(RoundType.FullBuy, CsTeam.Terrorist, "poop,T", null, "not found", null)]
-    [TestCase(null, CsTeam.Terrorist, "ak", null, "AK47 applied for Full Buy as T.", "AK47 removed from Full Buy as T.")]
-    [TestCase(RoundType.FullBuy, CsTeam.Spectator, "ak", null, "must join a team", "must join a team")]
-    [TestCase(RoundType.FullBuy, CsTeam.Terrorist, "ak,F", null, "Invalid team", "Invalid team")]
-    [TestCase(RoundType.FullBuy, CsTeam.Terrorist, "awp", null, "AWP: Enabled.", "AWP: Disabled.")]
-    [TestCase(RoundType.Pistol, CsTeam.CounterTerrorist, "awp", null, "AWP: Enabled.", "AWP: Disabled.")]
+    [TestCase(RoundType.FullBuy, CsTeam.Terrorist, "galil", CsItem.Galil, "Выбрано оружие Galil · Полная закупка · T.", "Сброшен выбор оружия Galil · Полная закупка · T.")]
+    [TestCase(RoundType.HalfBuy, CsTeam.Terrorist, "galil", null, "Выбрано оружие Galil · Полная закупка · T.",
+        "Сброшен выбор оружия Galil · Полная закупка · T.")]
+    [TestCase(RoundType.FullBuy, CsTeam.Terrorist, "krieg", CsItem.Krieg, "Выбрано оружие SG553 · Полная закупка · T.", "Сброшен выбор оружия SG553 · Полная закупка · T.")]
+    [TestCase(RoundType.HalfBuy, CsTeam.Terrorist, "mac10", CsItem.Mac10, "Выбрано оружие Mac10 · Малая закупка · T.", "Сброшен выбор оружия Mac10 · Малая закупка · T.")]
+    [TestCase(RoundType.FullBuy, CsTeam.Terrorist, "mac10", null, "Выбрано оружие Mac10 · Малая закупка · T.",
+        "Сброшен выбор оружия Mac10 · Малая закупка · T.")]
+    [TestCase(RoundType.Pistol, CsTeam.CounterTerrorist, "deag", CsItem.Deagle, "Выбрано оружие Deagle · Пистолетный раунд · CT.",
+        "Сброшен выбор оружия Deagle · Пистолетный раунд · CT.")]
+    [TestCase(RoundType.FullBuy, CsTeam.CounterTerrorist, "deag", CsItem.Deagle, "Выбрано оружие Deagle · Полная закупка · CT.",
+        "Сброшен выбор оружия Deagle · Полная закупка · CT.")]
+    [TestCase(RoundType.HalfBuy, CsTeam.CounterTerrorist, "deag", CsItem.Deagle, "Выбрано оружие Deagle · Малая закупка · CT.",
+        "Сброшен выбор оружия Deagle · Малая закупка · CT.")]
+    [TestCase(RoundType.FullBuy, CsTeam.CounterTerrorist, "galil", null, "«Galil» недоступно для стороны", null)]
+    [TestCase(RoundType.Pistol, CsTeam.CounterTerrorist, "tec9", null, "«Tec9» недоступно для стороны", null)]
+    [TestCase(RoundType.FullBuy, CsTeam.Terrorist, "poop", null, "не найдено", null)]
+    [TestCase(RoundType.FullBuy, CsTeam.Terrorist, "galil,T", CsItem.Galil, "Выбрано оружие Galil · Полная закупка · T.", null)]
+    [TestCase(RoundType.FullBuy, CsTeam.Terrorist, "krieg,T", CsItem.Krieg, "Выбрано оружие SG553 · Полная закупка · T.", null)]
+    [TestCase(RoundType.HalfBuy, CsTeam.Terrorist, "mac10,T", CsItem.Mac10, "Выбрано оружие Mac10 · Малая закупка · T.", null)]
+    [TestCase(RoundType.HalfBuy, CsTeam.None, "mac10,T", null, "Выбрано оружие Mac10 · Малая закупка · T.", null)]
+    [TestCase(RoundType.Pistol, CsTeam.CounterTerrorist, "deag,CT", CsItem.Deagle, "Выбрано оружие Deagle · Пистолетный раунд · CT.", null)]
+    [TestCase(RoundType.FullBuy, CsTeam.CounterTerrorist, "galil,CT", null, "«Galil» недоступно для стороны", null)]
+    [TestCase(RoundType.Pistol, CsTeam.CounterTerrorist, "tec9,CT", null, "«Tec9» недоступно для стороны", null)]
+    [TestCase(RoundType.FullBuy, CsTeam.Terrorist, "poop,T", null, "не найдено", null)]
+    [TestCase(null, CsTeam.Terrorist, "ak", null, "Выбрано оружие AK47 · Полная закупка · T.", "Сброшен выбор оружия AK47 · Полная закупка · T.")]
+    [TestCase(RoundType.FullBuy, CsTeam.Spectator, "ak", null, "вступите в команду", "вступите в команду")]
+    [TestCase(RoundType.FullBuy, CsTeam.Terrorist, "ak,F", null, "Неизвестная команда", "Неизвестная команда")]
+    [TestCase(RoundType.FullBuy, CsTeam.Terrorist, "awp", null, "AWP: включено.", "AWP: отключено.")]
+    [TestCase(RoundType.Pistol, CsTeam.CounterTerrorist, "awp", null, "AWP: включено.", "AWP: отключено.")]
     public async Task SetWeaponPreferenceCommandSingleArg(
         RoundType? roundType,
         CsTeam team,
@@ -167,9 +167,9 @@ public class WeaponSelectionTests : BaseTestFixture
     }
 
     [Test]
-    [TestCase("ak", CsItem.AK47, WeaponSelectionType.PlayerChoice, CsItem.AK47, "AK47 applied for Full Buy as T.")]
-    [TestCase("ak", CsItem.Galil, WeaponSelectionType.PlayerChoice, null, "not allowed")]
-    [TestCase("ak", CsItem.AK47, WeaponSelectionType.Default, null, "cannot choose")]
+    [TestCase("ak", CsItem.AK47, WeaponSelectionType.PlayerChoice, CsItem.AK47, "Выбрано оружие AK47 · Полная закупка · T.")]
+    [TestCase("ak", CsItem.Galil, WeaponSelectionType.PlayerChoice, null, "недоступно для выбора")]
+    [TestCase("ak", CsItem.AK47, WeaponSelectionType.Default, null, "нельзя выбирать оружие")]
     public async Task SetWeaponPreferencesConfig(
         string itemName,
         CsItem? allowedItem,

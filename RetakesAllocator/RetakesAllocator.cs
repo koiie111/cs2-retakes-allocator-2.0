@@ -286,7 +286,7 @@ public class RetakesAllocator : BasePlugin
 
     #region Commands
 
-    [ConsoleCommand("css_nextround", "Opens the menu to vote for the next round type.")]
+    [ConsoleCommand("css_nextround", "Открыть голосование за тип следующего раунда.")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnNextRoundCommand(CCSPlayerController? player, CommandInfo commandInfo)
     {
@@ -307,7 +307,7 @@ public class RetakesAllocator : BasePlugin
     }
 
     [ConsoleCommand("css_gun")]
-    [CommandHelper(usage: "<gun> [T|CT]", whoCanExecute: CommandUsage.CLIENT_ONLY)]
+    [CommandHelper(usage: "<оружие> [T|CT]", whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnWeaponCommand(CCSPlayerController? player, CommandInfo commandInfo)
     {
         if (!Configs.GetConfigData().GunCommandsEnabled)
@@ -341,7 +341,7 @@ public class RetakesAllocator : BasePlugin
         // Preferences now only affect the next allocation; no weapon swap during the current round
     }
 
-    [ConsoleCommand("css_awp", "Join or leave the AWP queue.")]
+    [ConsoleCommand("css_awp", "Включить или отключить выбор AWP.")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnAwpCommand(CCSPlayerController? player, CommandInfo commandInfo)
     {
@@ -390,7 +390,7 @@ public class RetakesAllocator : BasePlugin
         Helpers.WriteNewlineDelimited(result.Item1, commandInfo.ReplyToCommand);
     }
 
-    [ConsoleCommand("css_ssg", "Join or leave the SSG queue.")]
+    [ConsoleCommand("css_ssg", "Включить или отключить выбор SSG 08.")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnSsgCommand(CCSPlayerController? player, CommandInfo commandInfo)
     {
@@ -442,7 +442,7 @@ public class RetakesAllocator : BasePlugin
         Helpers.WriteNewlineDelimited(result.Item1, commandInfo.ReplyToCommand);
     }
 
-    [ConsoleCommand("css_zeus", "Toggle whether you will receive a Zeus.")]
+    [ConsoleCommand("css_zeus", "Включить или отключить получение Zeus.")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnZeusCommand(CCSPlayerController? player, CommandInfo commandInfo)
     {
@@ -478,7 +478,7 @@ public class RetakesAllocator : BasePlugin
         Helpers.WriteNewlineDelimited(Translator.Instance[messageKey], commandInfo.ReplyToCommand);
     }
 
-    [ConsoleCommand("css_enemy", "Toggle enemy weapon preferences.")]
+    [ConsoleCommand("css_enemy", "Настроить выбор оружия другой стороны.")]
     [CommandHelper(usage: "[disable|t|ct|both]", whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnEnemyWeaponsCommand(CCSPlayerController? player, CommandInfo commandInfo)
     {
@@ -530,7 +530,7 @@ public class RetakesAllocator : BasePlugin
     }
 
     [ConsoleCommand("css_removegun")]
-    [CommandHelper(minArgs: 1, usage: "<gun> [T|CT]", whoCanExecute: CommandUsage.CLIENT_ONLY)]
+    [CommandHelper(minArgs: 1, usage: "<оружие> [T|CT]", whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnRemoveWeaponCommand(CCSPlayerController? player, CommandInfo commandInfo)
     {
         if (!Configs.GetConfigData().GunCommandsEnabled)
@@ -557,7 +557,7 @@ public class RetakesAllocator : BasePlugin
         commandInfo.ReplyToCommand($"{MessagePrefix}{result}");
     }
 
-    [ConsoleCommand("css_setnextround", "Sets the next round type.")]
+    [ConsoleCommand("css_setnextround", "Выбрать тип следующего раунда.")]
     [CommandHelper(minArgs: 1, usage: "<P/H/F>", whoCanExecute: CommandUsage.CLIENT_ONLY)]
     [RequiresPermissions("@css/root")]
     public void OnSetNextRoundCommand(CCSPlayerController? player, CommandInfo commandInfo)
@@ -578,7 +578,7 @@ public class RetakesAllocator : BasePlugin
         }
     }
 
-    [ConsoleCommand("css_reload_allocator_config", "Reloads the cs2-retakes-allocator config.")]
+    [ConsoleCommand("css_reload_allocator_config", "Перезагрузить конфигурацию аллокатора.")]
     [RequiresPermissions("@css/root")]
     public void OnReloadAllocatorConfigCommand(CCSPlayerController? player, CommandInfo commandInfo)
     {
@@ -588,8 +588,8 @@ public class RetakesAllocator : BasePlugin
         RoundTypeManager.Instance.Initialize();
     }
 
-    [ConsoleCommand("css_print_config", "Print the entire config or a specific config.")]
-    [CommandHelper(usage: "<config>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
+    [ConsoleCommand("css_print_config", "Вывести всю конфигурацию или отдельный раздел.")]
+    [CommandHelper(usage: "<раздел>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
     [RequiresPermissions("@css/root")]
     public void OnPrintConfigCommand(CCSPlayerController? player, CommandInfo commandInfo)
     {
