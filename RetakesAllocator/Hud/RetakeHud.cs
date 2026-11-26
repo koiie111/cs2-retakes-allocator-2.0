@@ -86,9 +86,10 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
                 .Replace("weapon_", "", StringComparison.Ordinal) ?? "default"
         });
 
-    private sealed record Tile(string Name, Action Click, string Icon, string Detail = "", bool Selected = false);
+    private sealed record Tile(string Name, Action Click, string Icon, string Detail = "", bool Selected = false,
+        bool Featured = false);
     private sealed record Page(string Title, IReadOnlyList<Tile> Tiles, Action? Back = null,
-        string Caption = "", CsTeam? Team = null, string MoreLabel = "", Action? More = null);
+        string Caption = "", CsTeam? Team = null, bool WeaponChoices = false, Action<CsTeam>? ChooseTeam = null);
 
     private sealed class PlayerState(CCSPlayerController player)
     {
@@ -108,6 +109,7 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
         internal ulong PreferenceId { get; set; }
         internal Timer? CloseTimer { get; set; }
         internal Timer? MenuTimer { get; set; }
+        internal Timer? WelcomeTimer { get; set; }
         internal bool RoundToast { get; set; }
         internal bool ClientHasHud { get; set; }
     }
@@ -141,12 +143,12 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
             return;
 
         var state = State(player!);
-        if (state.ConnectedWelcomeAttempted)
+        if (state.ConnectedWelcomeAttempted || player!.AuthorizedSteamID is not { SteamId64: > 0 })
             return;
 
         // Capture only after the player has reached a team. The team chooser is
         // still the normal entry point, and a pending welcome never opens in combat.
-        if (player!.Team is not (CsTeam.Terrorist or CsTeam.CounterTerrorist or CsTeam.Spectator))
+        if (player.Team is not (CsTeam.Terrorist or CsTeam.CounterTerrorist or CsTeam.Spectator))
         {
             if (retries > 0)
                 plugin.AddTimer(0.8f, () => { if (Current(state)) Join(player, retries - 1); }, TimerFlags.STOP_ON_MAPCHANGE);
@@ -168,15 +170,24 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
             return;
         }
 
-        if (SafeForWelcome(player) && state.Page is null && !state.Welcome)
+        if (!SafeForWelcome(state) || state.WelcomeTimer is not null)
+            return;
+
+        // PlayerSettings loads on Steam authorization while joining can fire several round events.
+        // Let those settle, then check the saved preference again before opening.
+        state.WelcomeTimer = plugin.AddTimer(1.2f, () =>
         {
-            OpenWelcome(state);
-            state.ConnectedWelcomeAttempted = state.Welcome;
-        }
+            state.WelcomeTimer = null;
+            if (Enabled && Current(state) && !state.ConnectedWelcomeAttempted && SafeForWelcome(state))
+                OpenWelcome(state, onConnection: true);
+        }, TimerFlags.STOP_ON_MAPCHANGE);
     }
 
-    private static bool SafeForWelcome(CCSPlayerController player) =>
-        !player.PawnIsAlive || Utilities.GetGameRules() is { } rules && (rules.WarmupPeriod || rules.FreezePeriod);
+    private static bool SafeForWelcome(PlayerState state) =>
+        state.Page is null && !state.Welcome &&
+        state.Player.Team is (CsTeam.Terrorist or CsTeam.CounterTerrorist or CsTeam.Spectator) &&
+        (!state.Player.PawnIsAlive ||
+         Utilities.GetGameRules() is { } rules && (rules.WarmupPeriod || rules.FreezePeriod));
 
     internal bool OpenGuns(CCSPlayerController player)
     {
@@ -264,17 +275,24 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
         return true;
     }
 
-    private void OpenWelcome(PlayerState state)
+    private void OpenWelcome(PlayerState state, bool onConnection = false)
     {
+        var preference = ReadWelcomePreference(state.Player);
+        if (onConnection && (!preference.Available || preference.Skip))
+        {
+            state.ConnectedWelcomeAttempted = preference.Skip;
+            return;
+        }
+
         if (!Begin(state))
             return;
 
         state.Revision++;
         state.Welcome = true;
+        state.ConnectedWelcomeAttempted = true;
         state.Busy = false;
         state.Page = null;
         var view = state.Menu!;
-        var preference = ReadWelcomePreference(state.Player);
         if (preference.Available)
             state.SkipWelcome = preference.Skip;
         view.Class("intro_skip", "Off", !preference.Available);
@@ -292,7 +310,7 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
             new("Команды", () => ShowCommands(state), "commands")
         };
         if (Configs.GetConfigData().GunCommandsEnabled && Configs.GetConfigData().CanPlayersSelectWeapons())
-            entries.Insert(0, new("Выбрать оружие", () => OpenGuns(state.Player), "default", "!guns"));
+            entries.Insert(0, new("Выбрать оружие", () => OpenGuns(state.Player), "glock", Featured: true));
         if (HasAdminActions(state.Player))
             entries.Add(new("Админ-панель", () => ShowAdmin(state), "admin"));
 
@@ -348,11 +366,12 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
             || Helpers.HasEnemyStuffPermission(state.Player) || Configs.GetConfigData().IsZeusEnabled())
             entries.Add(new("Дополнительно", () => ShowExtra(state), "options"));
 
-        var other = state.Team == CsTeam.CounterTerrorist ? CsTeam.Terrorist : CsTeam.CounterTerrorist;
-        Show(state, new Page("Снаряжение", entries, () => ShowHelp(state), TeamName(state.Team), state.Team,
-            $"Снаряжение {(other == CsTeam.Terrorist ? "T" : "CT")}", () =>
+        Show(state, new Page("Снаряжение", entries, () => ShowHelp(state), Team: state.Team,
+            ChooseTeam: team =>
             {
-                state.Team = other;
+                if (state.Team == team)
+                    return;
+                state.Team = team;
                 ShowGear(state);
             }));
     }
@@ -371,7 +390,7 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
             entries.Add(new("Случайно", () => SetWeapon(state, slot, title, WeaponHelpers.RandomLoadoutPreference),
                 Icon: "random", Selected: current is null || current == WeaponHelpers.RandomLoadoutPreference));
 
-        Show(state, new Page(title, entries, () => ShowGear(state), TeamName(state.Team), state.Team));
+        Show(state, new Page(title, entries, () => ShowGear(state), TeamName(state.Team), state.Team, WeaponChoices: true));
     }
 
     private void SetWeapon(PlayerState state, WeaponAllocationType slot, string title, CsItem weapon)
@@ -421,7 +440,7 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
 
         var entries = choices.Select(weapon => new Tile(SniperName(weapon), () => SetSniper(state, weapon),
             Icon: weapon is null ? "none" : Icon(weapon), Selected: current == weapon)).ToArray();
-        Show(state, new Page("Снайперская винтовка", entries, () => ShowExtra(state), TeamName(state.Team), state.Team));
+        Show(state, new Page("Снайперская винтовка", entries, () => ShowExtra(state), TeamName(state.Team), state.Team, WeaponChoices: true));
     }
 
     private void SetSniper(PlayerState state, CsItem? weapon)
@@ -735,13 +754,18 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
         if (state.Page is not { } page || state.Menu is not { Valid: true } view)
             return;
 
+        var gear = page.ChooseTeam is not null;
         view.Class("intro", "Visible", false);
         view.Class("body", "Visible", true);
         view.Text("title", page.Title);
         view.Text("subtitle", page.Caption);
-        view.Class("caption", "Off", page.Caption.Length == 0 && page.Team is null);
+        view.Class("caption", "Off", gear || (page.Caption.Length == 0 && page.Team is null));
         SetTeam(view, "team", page.Team);
+        view.Class("team_picker", "Visible", gear);
+        view.Class("gear_t", "Active", gear && page.Team == CsTeam.Terrorist);
+        view.Class("gear_ct", "Active", gear && page.Team == CsTeam.CounterTerrorist);
 
+        var visibleTiles = Math.Min(PageSize, page.Tiles.Count - state.Offset);
         for (var i = 0; i < PageSize; i++)
         {
             var index = state.Offset + i;
@@ -755,15 +779,19 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
             view.Text($"detail_{i}", tile.Detail);
             view.Class($"detail_{i}", "Off", tile.Detail.Length == 0);
             view.Class(id, "Selected", tile.Selected);
+            var gearSlot = gear && index < GearSlots.Length;
+            view.Class(id, "Featured", tile.Featured);
+            view.Class(id, "HasDetail", tile.Detail.Length > 0);
+            view.Class(id, "WeaponSlot", gearSlot || page.WeaponChoices);
+            view.Class(id, "SlotOrder", gearSlot);
+            view.Class(id, "Strip", gear && !gearSlot);
+            view.Class(id, "Wide", i == visibleTiles - 1 && visibleTiles % 2 == 1);
             view.Variant($"icon_{i}", $"i-{tile.Icon}");
         }
 
         view.Class("back", "Off", page.Back is null);
         view.Class("previous", "Off", state.Offset == 0);
         view.Class("next", "Off", state.Offset + PageSize >= page.Tiles.Count);
-        view.Class("more", "Off", page.More is null);
-        if (page.More is not null)
-            view.Text("more_label", page.MoreLabel);
 
         Status(state, "");
         view.Class("menu", "Show", true);
@@ -827,7 +855,8 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
         switch (buttonId)
         {
             case "back": page.Back?.Invoke(); break;
-            case "more": page.More?.Invoke(); break;
+            case "gear_t": page.ChooseTeam?.Invoke(CsTeam.Terrorist); break;
+            case "gear_ct": page.ChooseTeam?.Invoke(CsTeam.CounterTerrorist); break;
             case "previous" when state.Offset > 0:
                 state.Offset -= PageSize;
                 Render(state);
@@ -889,6 +918,8 @@ internal sealed class RetakeHud(BasePlugin plugin, Action<CCSPlayerController, R
 
     private static void Forget(PlayerState state)
     {
+        state.WelcomeTimer?.Kill();
+        state.WelcomeTimer = null;
         Close(state);
         HideToast(state);
     }

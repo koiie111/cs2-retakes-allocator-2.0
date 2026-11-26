@@ -138,7 +138,16 @@ public class RetakesAllocator : BasePlugin
         _active = true;
         if (hotReload)
             PrefetchPlayers();
-        RegisterListener<Listeners.OnClientAuthorized>((_, steamId) => Queries.Prefetch([steamId.SteamId64]));
+        RegisterListener<Listeners.OnClientAuthorized>((slot, steamId) =>
+        {
+            Queries.Prefetch([steamId.SteamId64]);
+            Server.NextFrame(() =>
+            {
+                if (Utilities.GetPlayerFromSlot(slot) is { IsValid: true } player &&
+                    player.AuthorizedSteamID?.SteamId64 == steamId.SteamId64)
+                    _hud?.Join(player);
+            });
+        });
 
         _hud = new RetakeHud(this, (player, round) =>
             _allocatorMenuManager.GetMenu<VoteMenu>(MenuType.NextRoundVote).CastPanoramaVote(player, round));
