@@ -171,25 +171,6 @@ public class OnRoundPostStartHelper
         Func<T, bool> hasAwpPermission,
         Func<T, bool> hasSsgPermission,
         Func<T, bool> hasEnemyStuffPermission,
-        out RoundType currentRoundType
-    ) where T : notnull
-    {
-        currentRoundType = RoundTypeManager.Instance.GetNextRoundType();
-        var userIds = allPlayers.Select(player => getSteamId(player)).Where(id => id != 0).Distinct().ToArray();
-        Handle(allPlayers, getSteamId, getTeam, giveDefuseKit, allocateItemsForPlayer, hasAwpPermission,
-            hasSsgPermission, hasEnemyStuffPermission, currentRoundType, Queries.GetUsersSettings(userIds).ToDictionary(
-                entry => entry.Key, entry => new PreferenceSnapshot(entry.Value)));
-    }
-
-    public static void Handle<T>(
-        ICollection<T> allPlayers,
-        Func<T?, ulong> getSteamId,
-        Func<T, CsTeam> getTeam,
-        Action<T> giveDefuseKit,
-        Action<T, ICollection<CsItem>, string?> allocateItemsForPlayer,
-        Func<T, bool> hasAwpPermission,
-        Func<T, bool> hasSsgPermission,
-        Func<T, bool> hasEnemyStuffPermission,
         RoundType roundType,
         IReadOnlyDictionary<ulong, PreferenceSnapshot> userSettingsByPlayerId
     ) where T : notnull

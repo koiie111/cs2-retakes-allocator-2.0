@@ -7,14 +7,6 @@ namespace RetakesAllocatorCore;
 
 public class OnWeaponCommandHelper
 {
-    public static string Handle(ICollection<string> args, ulong userId, RoundType? roundType, CsTeam currentTeam,
-        bool remove, out CsItem? outWeapon)
-    {
-        var result = HandleAsync(args, userId, roundType, currentTeam, remove).GetAwaiter().GetResult();
-        outWeapon = result.Item2;
-        return result.Item1;
-    }
-
     public static async Task<Tuple<string, CsItem?>> HandleAsync(ICollection<string> args, ulong userId,
         RoundType? roundType, CsTeam currentTeam,
         bool remove, bool togglePreferred = false, bool removeAnyPreferred = false)
