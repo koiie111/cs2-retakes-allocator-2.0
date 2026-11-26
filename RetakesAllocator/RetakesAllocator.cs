@@ -133,7 +133,8 @@ public class RetakesAllocator : BasePlugin
         Batteries.Init();
         ResetState();
         _active = true;
-        PrefetchPlayers();
+        if (hotReload)
+            PrefetchPlayers();
         RegisterListener<Listeners.OnClientAuthorized>((_, steamId) => Queries.Prefetch([steamId.SteamId64]));
 
         _hud = new RetakeHud(this, (player, round) =>
@@ -160,7 +161,7 @@ public class RetakesAllocator : BasePlugin
             _weapons.Remove(handle);
             _bombTargets.Remove(handle);
         });
-        if (EntitySystem.IsInitialized)
+        if (hotReload)
             EnsureEntityIndex();
         RegisterEventHandler<EventPlayerConnectFull>((ev, _) =>
         {
@@ -263,6 +264,7 @@ public class RetakesAllocator : BasePlugin
             ResetState();
             _advancedGunMenu.Cleanup();
             EnsureEntityIndex();
+            PrefetchPlayers();
             Log.Debug($"Setting map name {mapName}");
             RoundTypeManager.Instance.SetMap(mapName);
         });
