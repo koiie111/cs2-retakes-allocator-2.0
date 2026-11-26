@@ -37,6 +37,21 @@ public class PreferenceQueueTests : BaseTestFixture
     }
 
     [Test]
+    public async Task PrefetchPublishesExternalChanges()
+    {
+        const ulong id = 76561198000000004;
+        await using (var database = new Db())
+        {
+            database.UserSettings.Add(new UserSetting { UserId = id, ZeusEnabled = true });
+            await database.SaveChangesAsync();
+        }
+        Queries.Prefetch([id, id]);
+        for (var attempt = 0; !Queries.HasSnapshot(id) && attempt < 100; attempt++)
+            await Task.Delay(10);
+        Assert.That(Queries.IsZeusEnabled(id), Is.True);
+    }
+
+    [Test]
     public async Task MissingRowDoesNotLookLikeAnUnknownSnapshot()
     {
         const ulong id = 76561198000000003;

@@ -106,8 +106,8 @@ public class Queries
         var requested = userIds.Where(id => id != 0).ToArray();
         lock (WorkLock)
         {
-            var ids = requested.Where(Refreshing.Add).ToArray();
-            if (ids.Length == 0)
+            var ids = requested.Where(Refreshing.Add).ToList();
+            if (ids.Count == 0)
                 return;
 
             _ = Enqueue(async (generation, config) =>
